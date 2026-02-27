@@ -2,6 +2,7 @@
 
 ## 소스 목록 관리
 - 파일: `config/sources.json`
+- 파일 상단의 `_comment`, `_source_template`를 참고해 소스를 추가
 - `sources[].active=true` 인 항목만 수집
 - `sources[].max_items`로 소스별 최대 수집 건수 지정 (현재 10)
 - `sources[].rank_by`로 정렬 기준 지정 (`recent`, `hada_points`)
