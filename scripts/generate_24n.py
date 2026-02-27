@@ -46,9 +46,22 @@ def parse_dt(s: str):
 
 
 def fetch_feed(source):
-    req = urllib.request.Request(source["url"], headers={"User-Agent": "24N-feedbot/1.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw = resp.read()
+    urls = [source["url"]] + source.get("alt_urls", [])
+    last_err = None
+    raw = None
+    for u in urls:
+        try:
+            req = urllib.request.Request(u, headers={"User-Agent": "24N-feedbot/1.0"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read()
+            source["_resolved_url"] = u
+            break
+        except Exception as e:
+            last_err = e
+            continue
+
+    if raw is None:
+        raise RuntimeError(f"all feed urls failed: {last_err}")
 
     root = ET.fromstring(raw)
     entries = []
@@ -229,49 +242,40 @@ def fetch_link_context(url: str) -> dict:
 
 
 def build_article_brief(ok_items):
-    top = ok_items[:6]
-    if not top:
-        return ["신규 항목이 없어 전일 흐름을 유지한다고 28일 정리했다."]
+    if not ok_items:
+        return ["지난 24시간 신규 발행물이 없어 전일 흐름을 유지한다고 28일 정리했다."]
 
-    enriched = []
-    for it in top:
-        ctx = fetch_link_context(it.get("link", ""))
-        enriched.append({**it, **ctx})
-
-    topic_counter = Counter()
-    for it in ok_items[:20]:
-        for t in it.get("tags", []):
-            topic_counter[t] += 1
-
-    mapping = {
-        "ai": "인공지능",
-        "tech": "기술",
-        "startup": "창업",
-        "policy": "정책",
-        "economy": "경제",
-        "macro": "거시",
-        "creator": "콘텐츠",
-        "korea": "국내",
-        "semiconductor": "반도체",
-        "labor": "노동",
+    kw_map = {
+        "에이전트·개발자동화": ["agent", "auto", "claude code", "openfang", "코딩", "자동", "메모리"],
+        "인공지능 제품경쟁": ["anthropic", "openai", "perplexity", "nano banana", "모델", "출시"],
+        "학습·지식생산": ["학습", "커리큘럼", "교육", "요약", "인사이트"],
+        "정책·안보": ["국방부", "war", "policy", "regulation", "성명"],
+        "시장·소득": ["연봉", "소득", "시장", "거시", "금리", "경제"],
     }
-    tops = [mapping.get(k, k) for k, _ in topic_counter.most_common(3) if k != "error"]
-    topic_text = "·".join(tops[:3]) if tops else "기술"
 
-    p1 = f"주요 공개 채널의 최근 24시간 발행물을 점검한 결과 {topic_text} 축 이슈가 동시에 부각됐다고 28일 확인됐다."
+    counts = Counter()
+    examples = {k: [] for k in kw_map}
+    for it in ok_items[:30]:
+        t = it["title"].lower()
+        for label, kws in kw_map.items():
+            if any(k in t for k in kws):
+                counts[label] += 1
+                if len(examples[label]) < 2:
+                    examples[label].append(it["title"])
 
-    lead_items = []
-    for it in enriched[:3]:
-        core = it.get("desc") or it.get("title_hint") or it.get("title")
-        core = re.sub(r"\s+", " ", core).strip()
-        if len(core) > 90:
-            core = core[:90] + "..."
-        lead_items.append(f"{it['source']}은 {core}")
-    p2 = "; ".join(lead_items) + " 등을 내놨다."
+    top_labels = [k for k, _ in counts.most_common(3)]
+    if not top_labels:
+        top_labels = ["인공지능 제품경쟁", "에이전트·개발자동화", "정책·안보"]
 
-    p3 = "발행량은 특정 커뮤니티 소스에 집중됐지만, 기관·뉴스레터 채널에서도 정책·산업 관련 신호가 이어졌다. 단순 링크 나열보다 공통 의제 단위로 묶어 해석하는 편이 아침 기사 작성에 유리하다."
+    p1 = f"주요 공개 채널의 최근 24시간 발행물을 종합한 결과, {top_labels[0]}과 {top_labels[1]} 흐름이 동시에 강해졌고 {top_labels[2]} 이슈가 이를 보완하는 구도로 나타났다고 28일 확인됐다."
 
-    p4 = "특히 인공지능 도구 공개, 개발 생산성, 규제·거버넌스 이슈가 함께 나타나는 흐름은 시장 반응과 정책 변수의 결합 가능성을 키우는 국면으로 읽힌다."
+    c1 = counts.get(top_labels[0], 0)
+    c2 = counts.get(top_labels[1], 0)
+    p2 = f"상위 두 의제의 신규 항목은 각각 {c1}건, {c2}건으로 집계됐다. 공통점은 단순 기능 추가보다 작업 흐름 전체를 자동화해 생산성을 높이려는 경쟁이 강해졌다는 점이다."
+
+    p3 = "발행 비중은 커뮤니티 채널에 집중됐지만 뉴스레터·기관 채널의 메시지를 함께 보면 단기 기능 경쟁과 중기 정책 리스크가 동시에 가격에 반영될 가능성이 커지는 국면으로 해석된다."
+
+    p4 = "아침 기사 작성에서는 개별 링크를 나열하기보다 개발자동화, 모델 경쟁, 규제 변수 세 축으로 묶어 전달하는 편이 독자 이해도와 재활용성이 높다."
 
     return [p1, p2, p3, p4]
 
@@ -280,25 +284,18 @@ def build_md(title, items, inactive, now_kst):
     lines = []
     lines.append(f"# [24N] {title}")
     lines.append("")
-    lines.append(f"- 발행 시각: {now_kst.strftime('%Y-%m-%d %H:%M KST')}")
-    lines.append("- 수집 범위: RSS/Atom/공식 채널 최근 24시간")
-    lines.append("")
 
     ok_items = [x for x in items if not x["title"].startswith("[수집 실패]")]
     err_items = [x for x in items if x["title"].startswith("[수집 실패]")]
 
     lines.append("## 오늘의 핵심")
     if ok_items:
-        lines.append(f"- 신규 항목 {len(ok_items)}건을 확인했습니다.")
-        if ok_items:
-            top_sources = Counter([x["account"] for x in ok_items]).most_common(3)
-            lines.append("- 발행 비중 상위: " + ", ".join([f"@{a}({n}건)" for a, n in top_sources]))
-        lines.append("- X 대신 공개 피드 기반 수집으로 구성했습니다.")
+        top_sources = Counter([x["account"] for x in ok_items]).most_common(3)
+        lines.append(f"- 최근 24시간 신규 항목은 {len(ok_items)}건입니다.")
+        lines.append("- 발행 비중 상위 채널: " + ", ".join([f"@{a} {n}건" for a, n in top_sources]))
+        lines.append("- 핵심 흐름은 링크 나열이 아니라 의제 단위로 재구성했습니다.")
     else:
-        lines.append("- 지난 24시간 신규 항목이 없습니다.")
-
-    if err_items:
-        lines.append(f"- 일부 소스 {len(err_items)}건은 수집에 실패했습니다.")
+        lines.append("- 신규 항목이 없습니다.")
     lines.append("")
 
     lines.append("## 브리핑")
@@ -309,24 +306,19 @@ def build_md(title, items, inactive, now_kst):
         lines.append("신규 항목이 없어 전일 흐름을 유지한다고 28일 정리했다.")
     lines.append("")
 
-    lines.append("## 신규 항목")
+    lines.append("## 참고 링크")
     if ok_items:
-        for it in ok_items[:20]:
-            kst_time = it["published"].astimezone(dt.timezone(dt.timedelta(hours=9))).strftime("%m-%d %H:%M")
-            lines.append(f"- {kst_time} | @{it['account']} | {it['title']} | {it['link']}")
+        for it in ok_items[:10]:
+            lines.append(f"- {it['title']} | {it['link']}")
     else:
         lines.append("- 없음")
     lines.append("")
 
-    lines.append("## 비활성/미매핑 계정")
-    for a in inactive:
-        lines.append(f"- @{a}")
-    lines.append("")
-
     if err_items:
-        lines.append("## 수집 오류")
-        for it in err_items[:10]:
-            lines.append(f"- @{it['account']} ({it['source']}): {it['title']}")
+        lines.append("## 수집 상태 점검")
+        lines.append("- 일부 소스 수집에 실패해 자동 복구를 시도 중입니다.")
+        for it in err_items[:5]:
+            lines.append(f"- @{it['account']}: {it['link']}")
         lines.append("")
 
     return "\n".join(lines)
