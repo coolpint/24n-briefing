@@ -76,7 +76,8 @@ def fetch_feed(source):
             link = child_text(item, ["link"])
             pub = child_text(item, ["pubDate", "date", "published", "updated"])
             desc = child_text(item, ["description", "summary"])
-            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": desc})
+            author = child_text(item, ["creator", "author", "dc:creator"])
+            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": desc, "author": author})
     elif root_name == "urlset":
         include_path = source.get("include_path", "")
         for u in root.findall("{*}url"):
@@ -85,7 +86,7 @@ def fetch_feed(source):
                 continue
             pub = child_text(u, ["lastmod"])
             title = link.rstrip("/").split("/")[-1].replace("-", " ")
-            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": ""})
+            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": "", "author": ""})
     else:
         # atom
         for ent in root.findall("{*}entry"):
@@ -101,7 +102,8 @@ def fetch_feed(source):
                     link = href
             pub = child_text(ent, ["published", "updated"])
             summary = child_text(ent, ["summary", "content"])
-            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": summary})
+            author = child_text(ent, ["author", "name"])
+            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": summary, "author": author})
 
     return entries
 
@@ -133,6 +135,11 @@ def collect_recent(sources, since_utc):
                 p = it.get("published")
                 if p is None:
                     continue
+                author_contains = (s.get("author_contains") or "").lower().strip()
+                if author_contains:
+                    author_text = (it.get("author") or "").lower()
+                    if author_contains not in author_text:
+                        continue
                 if p.tzinfo is None:
                     p = p.replace(tzinfo=dt.timezone.utc)
                 if p >= since_utc:

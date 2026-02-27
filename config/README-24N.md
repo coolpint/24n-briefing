@@ -6,7 +6,9 @@
 - `sources[].active=true` 인 항목만 수집
 - `sources[].max_items`로 소스별 최대 수집 건수 지정 (현재 10)
 - `sources[].rank_by`로 정렬 기준 지정 (`recent`, `hada_points`)
+- `sources[].author_contains`를 쓰면 통합 RSS에서 특정 필자만 필터링 가능
 - 계정 추가/삭제는 JSON에서 즉시 반영
+- `x_web_watchlist`는 웹 크롤링 보강용 예약 영역(기본 비활성)
 
 ## 실행 방식
 - 자동: 매일 06:00 KST (`.github/workflows/daily-24n.yml`)
