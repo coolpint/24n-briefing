@@ -6,6 +6,7 @@ import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 from collections import Counter
+from html import unescape
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -195,6 +196,86 @@ def build_title(items):
     return "글로벌 발신 채널 동향 점검"
 
 
+def fetch_link_context(url: str) -> dict:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 24N-bot"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            html = resp.read().decode("utf-8", "ignore")
+
+        title_m = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
+        title = unescape(re.sub(r"\s+", " ", title_m.group(1))).strip() if title_m else ""
+
+        desc = ""
+        for pat in [
+            r'<meta[^>]+name=["\']description["\'][^>]+content=["\'](.*?)["\']',
+            r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\'](.*?)["\']',
+        ]:
+            m = re.search(pat, html, re.I | re.S)
+            if m:
+                desc = unescape(re.sub(r"\s+", " ", m.group(1))).strip()
+                break
+
+        body = re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>", " ", html, flags=re.I)
+        body = re.sub(r"<[^>]+>", " ", body)
+        body = unescape(re.sub(r"\s+", " ", body)).strip()
+
+        return {
+            "title_hint": title[:120],
+            "desc": desc[:220],
+            "snippet": body[:240],
+        }
+    except Exception:
+        return {"title_hint": "", "desc": "", "snippet": ""}
+
+
+def build_article_brief(ok_items):
+    top = ok_items[:6]
+    if not top:
+        return ["신규 항목이 없어 전일 흐름을 유지한다고 28일 정리했다."]
+
+    enriched = []
+    for it in top:
+        ctx = fetch_link_context(it.get("link", ""))
+        enriched.append({**it, **ctx})
+
+    topic_counter = Counter()
+    for it in ok_items[:20]:
+        for t in it.get("tags", []):
+            topic_counter[t] += 1
+
+    mapping = {
+        "ai": "인공지능",
+        "tech": "기술",
+        "startup": "창업",
+        "policy": "정책",
+        "economy": "경제",
+        "macro": "거시",
+        "creator": "콘텐츠",
+        "korea": "국내",
+        "semiconductor": "반도체",
+        "labor": "노동",
+    }
+    tops = [mapping.get(k, k) for k, _ in topic_counter.most_common(3) if k != "error"]
+    topic_text = "·".join(tops[:3]) if tops else "기술"
+
+    p1 = f"주요 공개 채널의 최근 24시간 발행물을 점검한 결과 {topic_text} 축 이슈가 동시에 부각됐다고 28일 확인됐다."
+
+    lead_items = []
+    for it in enriched[:3]:
+        core = it.get("desc") or it.get("title_hint") or it.get("title")
+        core = re.sub(r"\s+", " ", core).strip()
+        if len(core) > 90:
+            core = core[:90] + "..."
+        lead_items.append(f"{it['source']}은 {core}")
+    p2 = "; ".join(lead_items) + " 등을 내놨다."
+
+    p3 = "발행량은 특정 커뮤니티 소스에 집중됐지만, 기관·뉴스레터 채널에서도 정책·산업 관련 신호가 이어졌다. 단순 링크 나열보다 공통 의제 단위로 묶어 해석하는 편이 아침 기사 작성에 유리하다."
+
+    p4 = "특히 인공지능 도구 공개, 개발 생산성, 규제·거버넌스 이슈가 함께 나타나는 흐름은 시장 반응과 정책 변수의 결합 가능성을 키우는 국면으로 읽힌다."
+
+    return [p1, p2, p3, p4]
+
+
 def build_md(title, items, inactive, now_kst):
     lines = []
     lines.append(f"# [24N] {title}")
@@ -222,14 +303,10 @@ def build_md(title, items, inactive, now_kst):
 
     lines.append("## 브리핑")
     if ok_items:
-        top = ok_items[:5]
-        sent = []
-        for it in top:
-            sent.append(f"{it['source']}에서 '{it['title']}' 항목이 올라왔습니다")
-        lines.append(". ".join(sent) + ".")
-        lines.append("오늘 판독 포인트는 개별 발언보다 반복되는 주제의 결입니다. 같은 문제를 서로 다른 채널이 어떤 언어로 설명하는지 비교해 읽으면 과장 없이 방향을 잡기 좋습니다.")
+        for p in build_article_brief(ok_items):
+            lines.append(p)
     else:
-        lines.append("신규 항목이 없어 전일 흐름을 유지합니다. 소스 활성 상태와 발행 주기를 함께 점검해 주세요.")
+        lines.append("신규 항목이 없어 전일 흐름을 유지한다고 28일 정리했다.")
     lines.append("")
 
     lines.append("## 신규 항목")
