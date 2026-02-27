@@ -41,6 +41,14 @@
       "tags": ["startup", "essay"],
       "active": false,
       "note": "Feed availability unstable; keep disabled until verified"
+    },
+    {
+      "account": "hadarss",
+      "label": "GeekNews (news.hada.io)",
+      "type": "atom",
+      "url": "https://news.hada.io/rss/news",
+      "tags": ["tech", "startup", "korea"],
+      "active": true
     }
   ],
   "inactive_accounts": [
