@@ -101,6 +101,25 @@
       "max_items": 10,
       "active": true,
       "note": "Feed title is 'Kara Grant'; verify if this is the intended newsletter"
+    },
+    {
+      "account": "nicholascarr",
+      "label": "Nicholas Carr (New Cartographies)",
+      "type": "rss",
+      "url": "https://www.newcartographies.com/feed",
+      "tags": ["media", "ai", "culture"],
+      "max_items": 10,
+      "active": true
+    },
+    {
+      "account": "nicholascarr_substack",
+      "label": "Nicholas Carr (Substack Profile)",
+      "type": "rss",
+      "url": "https://substack.com/@nicholascarr",
+      "tags": ["newsletter"],
+      "max_items": 10,
+      "active": false,
+      "note": "Profile URL is not a feed. Keep disabled; use newcartographies.com/feed."
     }
   ],
   "inactive_accounts": [
