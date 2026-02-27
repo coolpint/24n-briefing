@@ -35,11 +35,11 @@ def fetch_recent(accounts, bearer, start_time, end_time):
     tweets = []
     users = {}
 
-    # query length safety: split accounts into small chunks
     chunk_size = 8
     for i in range(0, len(accounts), chunk_size):
         chunk = accounts[i : i + chunk_size]
         query = "(" + " OR ".join([f"from:{a}" for a in chunk]) + ") -is:retweet"
+
         next_token = None
         page = 0
         while page < 3:
@@ -55,6 +55,7 @@ def fetch_recent(accounts, bearer, start_time, end_time):
             }
             if next_token:
                 params["next_token"] = next_token
+
             url = "https://api.x.com/2/tweets/search/recent?" + urllib.parse.urlencode(params)
             payload = x_get(url, bearer)
 
@@ -66,7 +67,6 @@ def fetch_recent(accounts, bearer, start_time, end_time):
             if not next_token:
                 break
 
-    # attach usernames + score
     enriched = []
     for t in tweets:
         metrics = t.get("public_metrics", {})
@@ -88,94 +88,82 @@ def fetch_recent(accounts, bearer, start_time, end_time):
             }
         )
 
-    # dedupe by id
     uniq = {x["id"]: x for x in enriched}
     return sorted(uniq.values(), key=lambda x: x["score"], reverse=True)
 
 
-def fallback_title(tweets):
-    if not tweets:
-        return "관심 계정 동향 요약"
-    tokens = []
-    stop = {
-        "the",
-        "and",
-        "for",
-        "with",
-        "that",
-        "this",
-        "from",
-        "have",
-        "just",
-        "you",
-        "your",
-        "about",
-        "오늘",
-        "관련",
-        "발표",
-        "시장",
+def detect_topics(tweets):
+    topic_map = {
+        "ai": ["ai", "llm", "model", "gemini", "gpt", "agent", "inference", "nvidia"],
+        "markets": ["market", "stocks", "equity", "bond", "fed", "rate", "inflation", "금리", "주가"],
+        "policy": ["policy", "regulation", "law", "antitrust", "정부", "규제", "법안"],
+        "products": ["launch", "release", "feature", "update", "ship", "제품", "출시", "업데이트"],
+        "creator": ["video", "youtube", "creator", "media", "콘텐츠", "크리에이터"],
     }
-    for t in tweets[:20]:
-        for w in re.findall(r"[A-Za-z가-힣]{2,}", t["text"].lower()):
-            if w not in stop:
-                tokens.append(w)
-    common = [w for w, _ in Counter(tokens).most_common(3)]
-    if not common:
-        return "관심 계정 동향 요약"
-    return " · ".join(common) + " 이슈 점검"
+
+    counts = Counter()
+    for t in tweets[:40]:
+        low = t["text"].lower()
+        for topic, kws in topic_map.items():
+            if any(kw in low for kw in kws):
+                counts[topic] += 1
+
+    labels = {
+        "ai": "인공지능",
+        "markets": "거시·시장",
+        "policy": "정책·규제",
+        "products": "제품·출시",
+        "creator": "콘텐츠 생태계",
+    }
+
+    ordered = [labels[k] for k, _ in counts.most_common(3)]
+    return ordered if ordered else ["관심 계정 동향"]
 
 
-def call_openai_summary(tweets):
-    key = os.getenv("OPENAI_API_KEY")
-    if not key:
-        return None
+def build_title(tweets):
+    topics = detect_topics(tweets)
+    if len(topics) >= 2:
+        return f"{topics[0]}와 {topics[1]} 동시 부각"
+    return f"{topics[0]} 핵심 동향"
 
-    sample = [
-        {
-            "author": t["author"],
-            "text": t["text"][:300],
-            "score": t["score"],
-            "created_at": t["created_at"],
-        }
-        for t in tweets[:30]
+
+def build_highlights(tweets):
+    top = tweets[:8]
+    if not top:
+        return ["지난 24시간 기준 수집된 공개 포스트가 없습니다."]
+
+    authors = [f"@{t['author']}" for t in top[:5]]
+    avg_score = int(sum(t["score"] for t in top) / len(top)) if top else 0
+
+    return [
+        f"상위 반응 계정: {', '.join(authors)}",
+        f"상위 포스트 평균 반응 점수는 {avg_score}점 수준입니다.",
+        f"핵심 화제는 {', '.join(detect_topics(tweets)[:3])}로 압축됩니다.",
     ]
 
-    prompt = (
-        "다음 X 포스트 묶음을 보고 한국어 아침 브리핑을 작성하라. "
-        "출력은 JSON만 반환: "
-        '{"title":"당일 요약 제목(20~40자)","highlights":["..."],"brief":"700~1200자"}. '
-        "제목은 시리즈명 없이 순수 제목만 작성. 과장 금지, 사실 중심."
-    )
 
-    body = {
-        "model": "gpt-4.1-mini",
-        "input": [
-            {"role": "system", "content": "You are a concise Korean financial/legal news brief writer."},
-            {
-                "role": "user",
-                "content": prompt + "\n\n데이터:\n" + json.dumps(sample, ensure_ascii=False),
-            },
-        ],
-        "text": {"format": {"type": "json_object"}},
-    }
+def build_brief(tweets):
+    if not tweets:
+        return "X API 검색 조건에 맞는 포스트를 찾지 못했습니다. 계정 목록과 API 권한을 점검해 주세요."
 
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    top = tweets[:12]
+    lines = []
+    lines.append("지난 24시간 동안 추적 계정 포스트를 집계한 결과, 단발성 이슈보다 해석 중심 메시지의 반응이 높았습니다.")
 
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        text = data.get("output", [])[0].get("content", [])[0].get("text", "{}")
-        return json.loads(text)
-    except Exception:
-        return None
+    topic_line = ", ".join(detect_topics(tweets)[:3])
+    lines.append(f"오늘 흐름은 {topic_line} 축으로 묶였습니다.")
+
+    top3 = top[:3]
+    for i, t in enumerate(top3, start=1):
+        m = t["metrics"]
+        lines.append(
+            f"{i}) @{t['author']} 포스트는 좋아요 {m.get('like_count',0)}회, 재게시 {m.get('retweet_count',0)}회로 반응이 컸고, "
+            f"핵심 메시지는 '{t['text'][:90]}'로 요약됩니다."
+        )
+
+    lines.append("아침 기사 작성 시에는 상위 포스트를 개별 보도로 나누기보다 공통된 문제의식으로 묶어 전달하는 방식이 효율적입니다.")
+    lines.append("특히 정책·시장·기술이 겹치는 주제는 발언의 사실관계와 맥락을 분리해 정리하면 과장 없이 읽히는 밀도가 올라갑니다.")
+    return " ".join(lines)
 
 
 def build_markdown(title, highlights, brief, tweets, now_kst):
@@ -230,35 +218,14 @@ def main():
         now_utc.isoformat().replace("+00:00", "Z"),
     )
 
-    if not tweets:
-        title = "수집 계정의 공개 포스트 없음"
-        highlights = ["지난 24시간 기준 수집된 공개 포스트가 없습니다."]
-        brief = "X API 검색 조건에 맞는 포스트를 찾지 못했습니다. 계정 목록과 API 권한을 점검해 주세요."
-    else:
-        llm = call_openai_summary(tweets)
-        if llm and isinstance(llm, dict):
-            title = llm.get("title") or fallback_title(tweets)
-            highlights = llm.get("highlights") or ["핵심 포스트를 점검했습니다."]
-            brief = llm.get("brief") or "상위 반응 포스트를 중심으로 이슈를 정리했습니다."
-        else:
-            title = fallback_title(tweets)
-            top_authors = ", ".join([f"@{t['author']}" for t in tweets[:5]])
-            highlights = [
-                "상위 반응 포스트를 중심으로 이슈를 압축했습니다.",
-                f"영향력 계정 중심 상위 작성자: {top_authors}",
-                "세부 포스트는 본문 하단 목록을 확인해 주세요.",
-            ]
-            brief = (
-                "지난 24시간 동안 추적 계정들의 포스트를 집계한 결과, 기술·거시경제·시장 코멘트가 혼재했습니다. "
-                "특히 반응 점수가 높은 계정의 메시지는 단기 뉴스보다는 해석과 시각 제시에 집중하는 흐름이었습니다. "
-                "아침 브리핑에서는 상위 포스트를 먼저 확인한 뒤, 중복 의제를 묶어 해석하는 접근이 유효합니다."
-            )
+    title = build_title(tweets)
+    highlights = build_highlights(tweets)
+    brief = build_brief(tweets)
 
     md = build_markdown(title.strip(), highlights, brief.strip(), tweets, now_kst)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"24n-{now_kst.strftime('%Y-%m-%d')}.md"
     out_path.write_text(md, encoding="utf-8")
-
     print(f"Wrote: {out_path}")
 
 

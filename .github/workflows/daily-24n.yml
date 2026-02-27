@@ -24,7 +24,6 @@ jobs:
       - name: Generate 24N brief
         env:
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python scripts/generate_24n.py
 
