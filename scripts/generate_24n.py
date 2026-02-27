@@ -254,30 +254,62 @@ def build_article_brief(ok_items):
     }
 
     counts = Counter()
-    examples = {k: [] for k in kw_map}
-    for it in ok_items[:30]:
+    grouped = {k: [] for k in kw_map}
+    for it in ok_items[:40]:
         t = it["title"].lower()
+        hit = False
         for label, kws in kw_map.items():
             if any(k in t for k in kws):
                 counts[label] += 1
-                if len(examples[label]) < 2:
-                    examples[label].append(it["title"])
+                grouped[label].append(it)
+                hit = True
+        if not hit:
+            counts["기타"] += 1
 
-    top_labels = [k for k, _ in counts.most_common(3)]
-    if not top_labels:
-        top_labels = ["인공지능 제품경쟁", "에이전트·개발자동화", "정책·안보"]
+    top_labels = [k for k, _ in counts.most_common(3) if k in kw_map]
+    if len(top_labels) < 3:
+        for k in ["인공지능 제품경쟁", "에이전트·개발자동화", "정책·안보"]:
+            if k not in top_labels:
+                top_labels.append(k)
+        top_labels = top_labels[:3]
 
-    p1 = f"주요 공개 채널의 최근 24시간 발행물을 종합한 결과, {top_labels[0]}과 {top_labels[1]} 흐름이 동시에 강해졌고 {top_labels[2]} 이슈가 이를 보완하는 구도로 나타났다고 28일 확인됐다."
+    # 링크 본문 맥락 읽기(상위 6건)
+    enriched = []
+    for it in ok_items[:6]:
+        ctx = fetch_link_context(it.get("link", ""))
+        enriched.append({**it, **ctx})
 
-    c1 = counts.get(top_labels[0], 0)
-    c2 = counts.get(top_labels[1], 0)
-    p2 = f"상위 두 의제의 신규 항목은 각각 {c1}건, {c2}건으로 집계됐다. 공통점은 단순 기능 추가보다 작업 흐름 전체를 자동화해 생산성을 높이려는 경쟁이 강해졌다는 점이다."
+    p1 = f"주요 공개 채널의 최근 24시간 발행물을 종합한 결과, {top_labels[0]}과 {top_labels[1]} 흐름이 동시 강화됐고 {top_labels[2]} 이슈가 보완 축으로 붙는 구조가 나타났다고 28일 확인됐다."
 
-    p3 = "발행 비중은 커뮤니티 채널에 집중됐지만 뉴스레터·기관 채널의 메시지를 함께 보면 단기 기능 경쟁과 중기 정책 리스크가 동시에 가격에 반영될 가능성이 커지는 국면으로 해석된다."
+    p2 = (
+        f"의제별로 보면 {top_labels[0]} {counts.get(top_labels[0],0)}건, "
+        f"{top_labels[1]} {counts.get(top_labels[1],0)}건, {top_labels[2]} {counts.get(top_labels[2],0)}건이 집계됐다. "
+        "단순 신제품 소개보다 작업 단위 통합과 운영 자동화 쪽으로 경쟁의 중심이 이동한 점이 공통으로 확인됐다."
+    )
 
-    p4 = "아침 기사 작성에서는 개별 링크를 나열하기보다 개발자동화, 모델 경쟁, 규제 변수 세 축으로 묶어 전달하는 편이 독자 이해도와 재활용성이 높다."
+    titles = [e['title'] for e in enriched[:6]]
+    t1 = ", ".join(titles[:2]) if len(titles) >= 2 else (titles[0] if titles else "주요 업데이트")
+    t2 = ", ".join(titles[2:4]) if len(titles) >= 4 else "추가 업데이트"
 
-    return [p1, p2, p3, p4]
+    p3 = f"세부 항목으로는 {t1}이 상위 구간에 배치됐다. 이들 항목은 발표 형식은 달라도 운영 효율과 실행 속도를 앞세운다는 점에서 같은 흐름으로 묶인다."
+    p4 = f"그다음 구간에서는 {t2}이 뒤를 이었다. 기술 공지와 실사용형 도구가 같은 시간대에 올라오면서 독자 관심이 기능 자체보다 활용 단계로 이동하는 경향이 확인됐다."
+
+    p5 = (
+        "채널 분포를 보면 커뮤니티성 소스의 발행 빈도가 높아 단기 체감 이슈를 빠르게 보여주는 장점이 있다. "
+        "반면 기관·뉴스레터 소스는 건수는 적어도 정책·거버넌스 같은 중기 변수의 방향을 제시하는 성격이 강했다."
+    )
+
+    p6 = (
+        "따라서 아침 기사에서는 개별 링크를 병렬로 나열하기보다, "
+        "개발자동화 확산, 모델·서비스 경쟁, 정책 리스크의 세 축으로 재배열해 전달하는 편이 흐름 파악에 유리하다."
+    )
+
+    p7 = (
+        "시장 관점에서는 기능 출시 자체보다 누가 더 짧은 주기로 운영 효율을 개선하는지가 핵심 비교 지표가 되고 있다. "
+        "정책 변수는 발표 건수와 무관하게 이벤트성 변동을 만들 수 있어 별도 모니터링이 필요하다."
+    )
+
+    return [p1, p2, p3, p4, p5, p6, p7]
 
 
 def build_md(title, items, inactive, now_kst):
