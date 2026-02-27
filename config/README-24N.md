@@ -3,6 +3,7 @@
 ## 소스 목록 관리
 - 파일: `config/sources.json`
 - `sources[].active=true` 인 항목만 수집
+- `sources[].max_items`로 소스별 최대 수집 건수 지정 (현재 권장 10)
 - 계정 추가/삭제는 JSON에서 즉시 반영
 
 ## 실행 방식

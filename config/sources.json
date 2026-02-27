@@ -6,6 +6,7 @@
       "type": "atom",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
       "tags": ["tech", "hardware", "creator"],
+      "max_items": 10,
       "active": true
     },
     {
@@ -14,6 +15,7 @@
       "type": "atom",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCcabW7890RKJzL968QWEykA",
       "tags": ["ai", "education"],
+      "max_items": 10,
       "active": true
     },
     {
@@ -22,6 +24,7 @@
       "type": "atom",
       "url": "https://blog.samaltman.com/posts.atom",
       "tags": ["ai", "startup", "policy"],
+      "max_items": 10,
       "active": true
     },
     {
@@ -48,6 +51,16 @@
       "type": "atom",
       "url": "https://news.hada.io/rss/news",
       "tags": ["tech", "startup", "korea"],
+      "max_items": 10,
+      "active": true
+    },
+    {
+      "account": "mynameisdjkim",
+      "label": "김단테 네이버 블로그",
+      "type": "rss",
+      "url": "https://rss.blog.naver.com/mynameisdj.xml",
+      "tags": ["korea", "invest", "economy"],
+      "max_items": 10,
       "active": true
     }
   ],
@@ -55,7 +68,6 @@
     "yeoulabba",
     "michaeljburry",
     "gdb",
-    "mynameisdjkim",
     "ylecun",
     "elonmusk",
     "atmostbeautiful",

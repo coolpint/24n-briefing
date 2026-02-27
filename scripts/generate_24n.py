@@ -90,6 +90,7 @@ def collect_recent(sources, since_utc):
             continue
         try:
             items = fetch_feed(s)
+            local = []
             for it in items:
                 p = it.get("published")
                 if p is None:
@@ -97,7 +98,7 @@ def collect_recent(sources, since_utc):
                 if p.tzinfo is None:
                     p = p.replace(tzinfo=dt.timezone.utc)
                 if p >= since_utc:
-                    rows.append(
+                    local.append(
                         {
                             "account": s["account"],
                             "source": s["label"],
@@ -108,6 +109,11 @@ def collect_recent(sources, since_utc):
                             "tags": s.get("tags", []),
                         }
                     )
+
+            local.sort(key=lambda x: x["published"], reverse=True)
+            max_items = int(s.get("max_items", 10))
+            rows.extend(local[:max_items])
+
         except Exception as e:
             rows.append(
                 {
@@ -123,6 +129,16 @@ def collect_recent(sources, since_utc):
 
     rows.sort(key=lambda x: x["published"], reverse=True)
     return rows
+
+
+def _has_batchim(word: str) -> bool:
+    if not word:
+        return False
+    ch = word[-1]
+    code = ord(ch)
+    if 0xAC00 <= code <= 0xD7A3:
+        return ((code - 0xAC00) % 28) != 0
+    return False
 
 
 def build_title(items):
@@ -141,7 +157,8 @@ def build_title(items):
     }
     top = [mapping.get(k, k) for k, _ in c.most_common(2) if k != "error"]
     if len(top) >= 2:
-        return f"{top[0]}와 {top[1]} 이슈 점검"
+        particle = "과" if _has_batchim(top[0]) else "와"
+        return f"{top[0]}{particle} {top[1]} 이슈 점검"
     if len(top) == 1:
         return f"{top[0]} 동향 점검"
     return "글로벌 발신 채널 동향 점검"
