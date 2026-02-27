@@ -14,6 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCES_FILE = ROOT / "config" / "sources.json"
 OUT_DIR = ROOT / "output"
 
+NITTER_MIRRORS = [
+    "https://nitter.net",
+    "https://nitter.privacydev.net",
+    "https://nitter.poast.org",
+]
+
 
 def strip_ns(tag: str) -> str:
     return tag.split("}", 1)[-1] if "}" in tag else tag
@@ -319,7 +325,7 @@ def build_article_brief(ok_items):
     return [p1, p2, p3, p4, p5, p6, p7]
 
 
-def build_md(title, items, inactive, now_kst):
+def build_md(title, items, inactive, now_kst, x_web=None):
     lines = []
     lines.append(f"# [24N] {title}")
     lines.append("")
@@ -353,6 +359,17 @@ def build_md(title, items, inactive, now_kst):
         lines.append("- 없음")
     lines.append("")
 
+    if x_web and (x_web.get("items") or x_web.get("errors")):
+        lines.append("## X 웹 보강(실험)")
+        if x_web.get("items"):
+            for it in x_web.get("items", [])[:6]:
+                lines.append(f"- @{it['account']} | {it['title']} | {it['link']}")
+        if x_web.get("errors"):
+            lines.append("- 일부 계정은 웹 차단으로 수집 실패")
+            for e in x_web.get("errors", [])[:6]:
+                lines.append(f"  - {e}")
+        lines.append("")
+
     if err_items:
         lines.append("## 수집 상태 점검")
         lines.append("- 일부 소스 수집에 실패해 자동 복구를 시도 중입니다.")
@@ -361,6 +378,44 @@ def build_md(title, items, inactive, now_kst):
         lines.append("")
 
     return "\n".join(lines)
+
+
+def fetch_x_web_watchlist(cfg, since_utc):
+    wl = cfg.get("x_web_watchlist") or {}
+    if not wl.get("enabled"):
+        return {"items": [], "errors": []}
+
+    accounts = wl.get("accounts") or []
+    items = []
+    errors = []
+
+    for acc in accounts:
+        got = False
+        for base in NITTER_MIRRORS:
+            try:
+                u = f"{base}/{acc}/rss"
+                req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    raw = resp.read()
+                root = ET.fromstring(raw)
+                for it in root.findall("channel/item")[:3]:
+                    title = child_text(it, ["title"])
+                    link = child_text(it, ["link"])
+                    pub = parse_dt(child_text(it, ["pubDate"]))
+                    if pub and pub.tzinfo is None:
+                        pub = pub.replace(tzinfo=dt.timezone.utc)
+                    if pub and pub >= since_utc:
+                        items.append({"account": acc, "title": title, "link": link, "published": pub})
+                got = True
+                break
+            except Exception as e:
+                last_err = str(e)
+                continue
+        if not got:
+            errors.append(f"@{acc}: 수집 실패({last_err if 'last_err' in locals() else 'unknown'})")
+
+    items.sort(key=lambda x: x.get("published") or since_utc, reverse=True)
+    return {"items": items, "errors": errors}
 
 
 def main():
@@ -375,12 +430,13 @@ def main():
     now_utc = dt.datetime.now(dt.timezone.utc)
     since = now_utc - dt.timedelta(hours=24)
     items = collect_recent(sources, since)
+    x_web = fetch_x_web_watchlist(cfg, since)
 
     title = build_title(items)
     kst = dt.timezone(dt.timedelta(hours=9))
     now_kst = now_utc.astimezone(kst)
 
-    md = build_md(title, items, inactive, now_kst)
+    md = build_md(title, items, inactive, now_kst, x_web=x_web)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"24n-{now_kst.strftime('%Y-%m-%d')}.md"
     out_path.write_text(md, encoding="utf-8")
