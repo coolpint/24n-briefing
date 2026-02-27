@@ -104,7 +104,7 @@
     },
     {
       "account": "nicholascarr",
-      "label": "Nicholas Carr (New Cartographies)",
+      "label": "Nicholas Carr (Substack: New Cartographies)",
       "type": "rss",
       "url": "https://www.newcartographies.com/feed",
       "tags": ["media", "ai", "culture"],
@@ -112,14 +112,13 @@
       "active": true
     },
     {
-      "account": "nicholascarr_substack",
-      "label": "Nicholas Carr (Substack Profile)",
+      "account": "brianmerchant",
+      "label": "Brian Merchant (Substack: Blood in the Machine)",
       "type": "rss",
-      "url": "https://substack.com/@nicholascarr",
-      "tags": ["newsletter"],
+      "url": "https://www.bloodinthemachine.com/feed",
+      "tags": ["tech", "labor", "ai"],
       "max_items": 10,
-      "active": false,
-      "note": "Profile URL is not a feed. Keep disabled; use newcartographies.com/feed."
+      "active": true
     }
   ],
   "inactive_accounts": [
