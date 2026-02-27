@@ -129,6 +129,16 @@
       "tags": ["tech", "labor", "ai"],
       "max_items": 10,
       "active": true
+    },
+    {
+      "account": "anthropic_news",
+      "label": "Anthropic Newsroom",
+      "type": "sitemap",
+      "url": "https://www.anthropic.com/sitemap.xml",
+      "include_path": "/news/",
+      "tags": ["ai", "policy", "research"],
+      "max_items": 10,
+      "active": true
     }
   ],
   "inactive_accounts": [

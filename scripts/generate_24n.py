@@ -63,6 +63,15 @@ def fetch_feed(source):
             pub = child_text(item, ["pubDate", "date", "published", "updated"])
             desc = child_text(item, ["description", "summary"])
             entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": desc})
+    elif root_name == "urlset":
+        include_path = source.get("include_path", "")
+        for u in root.findall("{*}url"):
+            link = child_text(u, ["loc"])
+            if include_path and include_path not in link:
+                continue
+            pub = child_text(u, ["lastmod"])
+            title = link.rstrip("/").split("/")[-1].replace("-", " ")
+            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": ""})
     else:
         # atom
         for ent in root.findall("{*}entry"):
