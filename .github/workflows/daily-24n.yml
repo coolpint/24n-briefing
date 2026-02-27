@@ -25,6 +25,13 @@ jobs:
         run: |
           python scripts/generate_24n.py
 
+      - name: Send Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python scripts/send_telegram.py
+
       - name: Commit output
         run: |
           git config user.name "github-actions[bot]"
