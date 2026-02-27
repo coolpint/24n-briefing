@@ -51,6 +51,7 @@
       "type": "atom",
       "url": "https://news.hada.io/rss/news",
       "tags": ["tech", "startup", "korea"],
+      "rank_by": "hada_points",
       "max_items": 10,
       "active": true
     },

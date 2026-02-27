@@ -83,6 +83,21 @@ def fetch_feed(source):
     return entries
 
 
+def fetch_hada_points(topic_url: str) -> int:
+    try:
+        req = urllib.request.Request(topic_url, headers={"User-Agent": "24N-feedbot/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8", "ignore")
+        m_id = re.search(r"topic\?id=(\d+)", topic_url)
+        if not m_id:
+            return 0
+        tid = m_id.group(1)
+        m_pt = re.search(rf"id=['\"]tp{tid}['\"]>(\d+)<", html)
+        return int(m_pt.group(1)) if m_pt else 0
+    except Exception:
+        return 0
+
+
 def collect_recent(sources, since_utc):
     rows = []
     for s in sources:
@@ -110,7 +125,14 @@ def collect_recent(sources, since_utc):
                         }
                     )
 
-            local.sort(key=lambda x: x["published"], reverse=True)
+            rank_by = s.get("rank_by", "recent")
+            if rank_by == "hada_points":
+                for it in local:
+                    it["rank_score"] = fetch_hada_points(it.get("link", ""))
+                local.sort(key=lambda x: (x.get("rank_score", 0), x["published"]), reverse=True)
+            else:
+                local.sort(key=lambda x: x["published"], reverse=True)
+
             max_items = int(s.get("max_items", 10))
             rows.extend(local[:max_items])
 
