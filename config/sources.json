@@ -1,0 +1,59 @@
+{
+  "sources": [
+    {
+      "account": "MKBHD",
+      "label": "Marques Brownlee YouTube",
+      "type": "atom",
+      "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+      "tags": ["tech", "hardware", "creator"],
+      "active": true
+    },
+    {
+      "account": "karpathy",
+      "label": "Andrej Karpathy YouTube",
+      "type": "atom",
+      "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCcabW7890RKJzL968QWEykA",
+      "tags": ["ai", "education"],
+      "active": true
+    },
+    {
+      "account": "sama",
+      "label": "Sam Altman Blog",
+      "type": "atom",
+      "url": "https://blog.samaltman.com/posts.atom",
+      "tags": ["ai", "startup", "policy"],
+      "active": true
+    },
+    {
+      "account": "paulkrugman",
+      "label": "NYT Krugman RSS",
+      "type": "rss",
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/Krugman.xml",
+      "tags": ["macro", "economy"],
+      "active": false,
+      "note": "Public RSS endpoint not currently available"
+    },
+    {
+      "account": "paulg",
+      "label": "Paul Graham RSS",
+      "type": "rss",
+      "url": "https://www.aaronsw.com/2002/feeds/pgessays.rss",
+      "tags": ["startup", "essay"],
+      "active": false,
+      "note": "Feed availability unstable; keep disabled until verified"
+    }
+  ],
+  "inactive_accounts": [
+    "yeoulabba",
+    "michaeljburry",
+    "gdb",
+    "mynameisdjkim",
+    "ylecun",
+    "elonmusk",
+    "atmostbeautiful",
+    "xguru",
+    "TheStalwart",
+    "bgurley",
+    "StevenLevy"
+  ]
+}

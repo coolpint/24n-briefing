@@ -22,8 +22,6 @@ jobs:
           python-version: '3.11'
 
       - name: Generate 24N brief
-        env:
-          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
         run: |
           python scripts/generate_24n.py
 

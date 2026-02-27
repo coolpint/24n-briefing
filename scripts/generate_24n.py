@@ -1,228 +1,230 @@
 #!/usr/bin/env python3
 import datetime as dt
 import json
-import os
 import re
 import sys
-import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from collections import Counter
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ACCOUNTS_FILE = ROOT / "config" / "accounts.txt"
+SOURCES_FILE = ROOT / "config" / "sources.json"
 OUT_DIR = ROOT / "output"
 
 
-def read_accounts(path: Path):
-    rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        rows.append(line.lstrip("@").strip())
-    return sorted(set(rows))
+def strip_ns(tag: str) -> str:
+    return tag.split("}", 1)[-1] if "}" in tag else tag
 
 
-def x_get(url: str, bearer: str):
-    req = urllib.request.Request(url)
-    req.add_header("Authorization", f"Bearer {bearer}")
+def child_text(node, names):
+    names = set(names)
+    for c in list(node):
+        if strip_ns(c.tag) in names and c.text:
+            return c.text.strip()
+    return ""
+
+
+def parse_dt(s: str):
+    if not s:
+        return None
+    s = s.strip()
+    try:
+        # rss pubDate
+        return parsedate_to_datetime(s)
+    except Exception:
+        pass
+    try:
+        # atom updated/published
+        if s.endswith("Z"):
+            s = s.replace("Z", "+00:00")
+        return dt.datetime.fromisoformat(s)
+    except Exception:
+        return None
+
+
+def fetch_feed(source):
+    req = urllib.request.Request(source["url"], headers={"User-Agent": "24N-feedbot/1.0"})
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        raw = resp.read()
+
+    root = ET.fromstring(raw)
+    entries = []
+
+    root_name = strip_ns(root.tag).lower()
+    if root_name == "rss":
+        channel = root.find("channel")
+        if channel is None:
+            return entries
+        for item in channel.findall("item"):
+            title = child_text(item, ["title"])
+            link = child_text(item, ["link"])
+            pub = child_text(item, ["pubDate", "date", "published", "updated"])
+            desc = child_text(item, ["description", "summary"])
+            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": desc})
+    else:
+        # atom
+        for ent in root.findall("{*}entry"):
+            title = child_text(ent, ["title"])
+            link = ""
+            for lk in ent.findall("{*}link"):
+                rel = lk.attrib.get("rel", "alternate")
+                href = lk.attrib.get("href", "")
+                if rel == "alternate" and href:
+                    link = href
+                    break
+                if not link and href:
+                    link = href
+            pub = child_text(ent, ["published", "updated"])
+            summary = child_text(ent, ["summary", "content"])
+            entries.append({"title": title, "link": link, "published": parse_dt(pub), "summary": summary})
+
+    return entries
 
 
-def fetch_recent(accounts, bearer, start_time, end_time):
-    tweets = []
-    users = {}
+def collect_recent(sources, since_utc):
+    rows = []
+    for s in sources:
+        if not s.get("active", False):
+            continue
+        try:
+            items = fetch_feed(s)
+            for it in items:
+                p = it.get("published")
+                if p is None:
+                    continue
+                if p.tzinfo is None:
+                    p = p.replace(tzinfo=dt.timezone.utc)
+                if p >= since_utc:
+                    rows.append(
+                        {
+                            "account": s["account"],
+                            "source": s["label"],
+                            "title": re.sub(r"\s+", " ", it.get("title", "")).strip(),
+                            "link": it.get("link", ""),
+                            "published": p,
+                            "summary": re.sub(r"\s+", " ", it.get("summary", "")).strip(),
+                            "tags": s.get("tags", []),
+                        }
+                    )
+        except Exception as e:
+            rows.append(
+                {
+                    "account": s["account"],
+                    "source": s["label"],
+                    "title": f"[수집 실패] {e}",
+                    "link": s["url"],
+                    "published": dt.datetime.now(dt.timezone.utc),
+                    "summary": "",
+                    "tags": ["error"],
+                }
+            )
 
-    chunk_size = 8
-    for i in range(0, len(accounts), chunk_size):
-        chunk = accounts[i : i + chunk_size]
-        query = "(" + " OR ".join([f"from:{a}" for a in chunk]) + ") -is:retweet"
-
-        next_token = None
-        page = 0
-        while page < 3:
-            page += 1
-            params = {
-                "query": query,
-                "max_results": "100",
-                "start_time": start_time,
-                "end_time": end_time,
-                "tweet.fields": "created_at,public_metrics,lang",
-                "expansions": "author_id",
-                "user.fields": "username,name",
-            }
-            if next_token:
-                params["next_token"] = next_token
-
-            url = "https://api.x.com/2/tweets/search/recent?" + urllib.parse.urlencode(params)
-            payload = x_get(url, bearer)
-
-            for u in payload.get("includes", {}).get("users", []):
-                users[u.get("id")] = u
-            tweets.extend(payload.get("data", []))
-
-            next_token = payload.get("meta", {}).get("next_token")
-            if not next_token:
-                break
-
-    enriched = []
-    for t in tweets:
-        metrics = t.get("public_metrics", {})
-        score = (
-            metrics.get("like_count", 0)
-            + 2 * metrics.get("retweet_count", 0)
-            + 2 * metrics.get("quote_count", 0)
-            + metrics.get("reply_count", 0)
-        )
-        author = users.get(t.get("author_id"), {})
-        enriched.append(
-            {
-                "id": t.get("id"),
-                "author": author.get("username", "unknown"),
-                "text": re.sub(r"\s+", " ", t.get("text", "")).strip(),
-                "created_at": t.get("created_at"),
-                "metrics": metrics,
-                "score": score,
-            }
-        )
-
-    uniq = {x["id"]: x for x in enriched}
-    return sorted(uniq.values(), key=lambda x: x["score"], reverse=True)
+    rows.sort(key=lambda x: x["published"], reverse=True)
+    return rows
 
 
-def detect_topics(tweets):
-    topic_map = {
-        "ai": ["ai", "llm", "model", "gemini", "gpt", "agent", "inference", "nvidia"],
-        "markets": ["market", "stocks", "equity", "bond", "fed", "rate", "inflation", "금리", "주가"],
-        "policy": ["policy", "regulation", "law", "antitrust", "정부", "규제", "법안"],
-        "products": ["launch", "release", "feature", "update", "ship", "제품", "출시", "업데이트"],
-        "creator": ["video", "youtube", "creator", "media", "콘텐츠", "크리에이터"],
-    }
-
-    counts = Counter()
-    for t in tweets[:40]:
-        low = t["text"].lower()
-        for topic, kws in topic_map.items():
-            if any(kw in low for kw in kws):
-                counts[topic] += 1
-
-    labels = {
+def build_title(items):
+    c = Counter()
+    for it in items[:30]:
+        for t in it.get("tags", []):
+            c[t] += 1
+    mapping = {
         "ai": "인공지능",
-        "markets": "거시·시장",
-        "policy": "정책·규제",
-        "products": "제품·출시",
-        "creator": "콘텐츠 생태계",
+        "macro": "거시경제",
+        "economy": "경제",
+        "policy": "정책",
+        "tech": "기술",
+        "creator": "콘텐츠",
+        "startup": "스타트업",
     }
-
-    ordered = [labels[k] for k, _ in counts.most_common(3)]
-    return ordered if ordered else ["관심 계정 동향"]
-
-
-def build_title(tweets):
-    topics = detect_topics(tweets)
-    if len(topics) >= 2:
-        return f"{topics[0]}와 {topics[1]} 동시 부각"
-    return f"{topics[0]} 핵심 동향"
+    top = [mapping.get(k, k) for k, _ in c.most_common(2) if k != "error"]
+    if len(top) >= 2:
+        return f"{top[0]}와 {top[1]} 이슈 점검"
+    if len(top) == 1:
+        return f"{top[0]} 동향 점검"
+    return "글로벌 발신 채널 동향 점검"
 
 
-def build_highlights(tweets):
-    top = tweets[:8]
-    if not top:
-        return ["지난 24시간 기준 수집된 공개 포스트가 없습니다."]
-
-    authors = [f"@{t['author']}" for t in top[:5]]
-    avg_score = int(sum(t["score"] for t in top) / len(top)) if top else 0
-
-    return [
-        f"상위 반응 계정: {', '.join(authors)}",
-        f"상위 포스트 평균 반응 점수는 {avg_score}점 수준입니다.",
-        f"핵심 화제는 {', '.join(detect_topics(tweets)[:3])}로 압축됩니다.",
-    ]
-
-
-def build_brief(tweets):
-    if not tweets:
-        return "X API 검색 조건에 맞는 포스트를 찾지 못했습니다. 계정 목록과 API 권한을 점검해 주세요."
-
-    top = tweets[:12]
-    lines = []
-    lines.append("지난 24시간 동안 추적 계정 포스트를 집계한 결과, 단발성 이슈보다 해석 중심 메시지의 반응이 높았습니다.")
-
-    topic_line = ", ".join(detect_topics(tweets)[:3])
-    lines.append(f"오늘 흐름은 {topic_line} 축으로 묶였습니다.")
-
-    top3 = top[:3]
-    for i, t in enumerate(top3, start=1):
-        m = t["metrics"]
-        lines.append(
-            f"{i}) @{t['author']} 포스트는 좋아요 {m.get('like_count',0)}회, 재게시 {m.get('retweet_count',0)}회로 반응이 컸고, "
-            f"핵심 메시지는 '{t['text'][:90]}'로 요약됩니다."
-        )
-
-    lines.append("아침 기사 작성 시에는 상위 포스트를 개별 보도로 나누기보다 공통된 문제의식으로 묶어 전달하는 방식이 효율적입니다.")
-    lines.append("특히 정책·시장·기술이 겹치는 주제는 발언의 사실관계와 맥락을 분리해 정리하면 과장 없이 읽히는 밀도가 올라갑니다.")
-    return " ".join(lines)
-
-
-def build_markdown(title, highlights, brief, tweets, now_kst):
+def build_md(title, items, inactive, now_kst):
     lines = []
     lines.append(f"# [24N] {title}")
     lines.append("")
     lines.append(f"- 발행 시각: {now_kst.strftime('%Y-%m-%d %H:%M KST')}")
-    lines.append("- 기준 범위: 최근 24시간")
+    lines.append("- 수집 범위: RSS/Atom/공식 채널 최근 24시간")
     lines.append("")
+
+    ok_items = [x for x in items if not x["title"].startswith("[수집 실패]")]
+    err_items = [x for x in items if x["title"].startswith("[수집 실패]")]
+
     lines.append("## 오늘의 핵심")
-    for h in highlights[:5]:
-        lines.append(f"- {h}")
+    if ok_items:
+        lines.append(f"- 신규 항목 {len(ok_items)}건을 확인했습니다.")
+        if ok_items:
+            top_sources = Counter([x["account"] for x in ok_items]).most_common(3)
+            lines.append("- 발행 비중 상위: " + ", ".join([f"@{a}({n}건)" for a, n in top_sources]))
+        lines.append("- X 대신 공개 피드 기반 수집으로 구성했습니다.")
+    else:
+        lines.append("- 지난 24시간 신규 항목이 없습니다.")
+
+    if err_items:
+        lines.append(f"- 일부 소스 {len(err_items)}건은 수집에 실패했습니다.")
     lines.append("")
+
     lines.append("## 브리핑")
-    lines.append(brief)
+    if ok_items:
+        top = ok_items[:5]
+        sent = []
+        for it in top:
+            sent.append(f"{it['source']}에서 '{it['title']}' 항목이 올라왔습니다")
+        lines.append(". ".join(sent) + ".")
+        lines.append("오늘 판독 포인트는 개별 발언보다 반복되는 주제의 결입니다. 같은 문제를 서로 다른 채널이 어떤 언어로 설명하는지 비교해 읽으면 과장 없이 방향을 잡기 좋습니다.")
+    else:
+        lines.append("신규 항목이 없어 전일 흐름을 유지합니다. 소스 활성 상태와 발행 주기를 함께 점검해 주세요.")
     lines.append("")
-    lines.append("## 주요 포스트(상위 12)")
-    for t in tweets[:12]:
-        m = t["metrics"]
-        lines.append(
-            f"- @{t['author']}: {t['text'][:180]}"
-            f" (좋아요 {m.get('like_count',0)}, 재게시 {m.get('retweet_count',0)}, 답글 {m.get('reply_count',0)})"
-        )
+
+    lines.append("## 신규 항목")
+    if ok_items:
+        for it in ok_items[:20]:
+            kst_time = it["published"].astimezone(dt.timezone(dt.timedelta(hours=9))).strftime("%m-%d %H:%M")
+            lines.append(f"- {kst_time} | @{it['account']} | {it['title']} | {it['link']}")
+    else:
+        lines.append("- 없음")
     lines.append("")
+
+    lines.append("## 비활성/미매핑 계정")
+    for a in inactive:
+        lines.append(f"- @{a}")
+    lines.append("")
+
+    if err_items:
+        lines.append("## 수집 오류")
+        for it in err_items[:10]:
+            lines.append(f"- @{it['account']} ({it['source']}): {it['title']}")
+        lines.append("")
+
     return "\n".join(lines)
 
 
 def main():
-    bearer = os.getenv("X_BEARER_TOKEN")
-    if not bearer:
-        print("ERROR: Missing X_BEARER_TOKEN", file=sys.stderr)
+    if not SOURCES_FILE.exists():
+        print(f"ERROR: missing {SOURCES_FILE}", file=sys.stderr)
         sys.exit(2)
 
-    if not ACCOUNTS_FILE.exists():
-        print(f"ERROR: Missing accounts file: {ACCOUNTS_FILE}", file=sys.stderr)
-        sys.exit(2)
-
-    accounts = read_accounts(ACCOUNTS_FILE)
-    if not accounts:
-        print("ERROR: accounts.txt is empty", file=sys.stderr)
-        sys.exit(2)
+    cfg = json.loads(SOURCES_FILE.read_text(encoding="utf-8"))
+    sources = cfg.get("sources", [])
+    inactive = cfg.get("inactive_accounts", [])
 
     now_utc = dt.datetime.now(dt.timezone.utc)
-    start_utc = now_utc - dt.timedelta(hours=24)
+    since = now_utc - dt.timedelta(hours=24)
+    items = collect_recent(sources, since)
+
+    title = build_title(items)
     kst = dt.timezone(dt.timedelta(hours=9))
     now_kst = now_utc.astimezone(kst)
 
-    tweets = fetch_recent(
-        accounts,
-        bearer,
-        start_utc.isoformat().replace("+00:00", "Z"),
-        now_utc.isoformat().replace("+00:00", "Z"),
-    )
-
-    title = build_title(tweets)
-    highlights = build_highlights(tweets)
-    brief = build_brief(tweets)
-
-    md = build_markdown(title.strip(), highlights, brief.strip(), tweets, now_kst)
+    md = build_md(title, items, inactive, now_kst)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"24n-{now_kst.strftime('%Y-%m-%d')}.md"
     out_path.write_text(md, encoding="utf-8")
