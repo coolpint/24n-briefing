@@ -63,6 +63,44 @@
       "tags": ["korea", "invest", "economy"],
       "max_items": 10,
       "active": true
+    },
+    {
+      "account": "chinatalk",
+      "label": "ChinaTalk (Substack)",
+      "type": "rss",
+      "url": "https://www.chinatalk.media/feed",
+      "tags": ["china", "policy", "geopolitics"],
+      "max_items": 10,
+      "active": true
+    },
+    {
+      "account": "twocents",
+      "label": "TWO CENTS (Substack)",
+      "type": "rss",
+      "url": "https://twocents.substack.com/feed",
+      "tags": ["opinion"],
+      "max_items": 10,
+      "active": true,
+      "note": "Feed exists but posting frequency appears very low"
+    },
+    {
+      "account": "thechipletter",
+      "label": "THE CHIP LETTER (Substack)",
+      "type": "rss",
+      "url": "https://thechipletter.substack.com/feed",
+      "tags": ["semiconductor", "tech"],
+      "max_items": 10,
+      "active": true
+    },
+    {
+      "account": "granted",
+      "label": "GRANTED (Substack)",
+      "type": "rss",
+      "url": "https://granted.substack.com/feed",
+      "tags": ["newsletter"],
+      "max_items": 10,
+      "active": true,
+      "note": "Feed title is 'Kara Grant'; verify if this is the intended newsletter"
     }
   ],
   "inactive_accounts": [
