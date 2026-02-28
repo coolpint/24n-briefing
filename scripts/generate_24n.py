@@ -292,7 +292,8 @@ def build_article_brief(ok_items):
         ctx = fetch_link_context(it.get("link", ""))
         enriched.append({**it, **ctx})
 
-    p1 = f"주요 공개 채널의 최근 24시간 발행물을 종합한 결과, {top_labels[0]}과 {top_labels[1]} 흐름이 동시 강화됐고 {top_labels[2]} 이슈가 보완 축으로 붙는 구조가 나타났다고 28일 확인됐다."
+    p1_particle = "과" if _has_batchim(top_labels[0]) else "와"
+    p1 = f"주요 공개 채널의 최근 24시간 발행물을 종합한 결과, {top_labels[0]}{p1_particle} {top_labels[1]} 흐름이 동시 강화됐고 {top_labels[2]} 이슈가 보완 축으로 붙는 구조가 나타났다고 28일 확인됐다."
 
     p2 = (
         f"의제별로 보면 {top_labels[0]} {counts.get(top_labels[0],0)}건, "
@@ -347,7 +348,10 @@ def summarize_x_web(items):
     tops = [k for k, _ in c.most_common(2)]
     lines = []
     if tops:
-        lines.append(f"- X 포스트는 {tops[0]} 흐름이 가장 두드러졌고, {tops[1] if len(tops)>1 else '연관 이슈'}이 뒤를 이었습니다.")
+        if len(tops) > 1:
+            lines.append(f"- X 포스트는 {tops[0]} 중심으로 전개됐고, {tops[1]} 이슈가 보조 축으로 붙었습니다.")
+        else:
+            lines.append(f"- X 포스트는 {tops[0]} 이슈 비중이 높았습니다.")
     else:
         lines.append("- X 포스트는 단일 이슈 집중보다 코멘트 분산형 흐름이었습니다.")
 
@@ -358,13 +362,13 @@ def summarize_x_web(items):
     for acc, rows in list(by_acc.items())[:4]:
         texts = " ".join(r['title'] for r in rows[:2]).lower()
         if any(w in texts for w in ["nvidia", "openai", "inference", "chip"]):
-            gist = "반도체·추론 인프라와 투자 규모를 연결해 해석하는 발언이 이어졌습니다"
+            gist = "반도체·추론 인프라와 투자 규모를 함께 묶어 해석하는 발언이 이어졌습니다"
         elif any(w in texts for w in ["cursor", "agent", "code", "workflow", "auto"]):
-            gist = "코딩 작업에서 에이전트 활용 비중이 빠르게 올라가는 현상을 강조했습니다"
+            gist = "코딩 작업에서 에이전트 활용 비중이 빠르게 올라가는 흐름을 강조했습니다"
         elif any(w in texts for w in ["startup", "founder", "office hours", "domain"]):
-            gist = "창업 현장의 편차와 실행 속도 격차를 체감 사례로 제시했습니다"
+            gist = "창업 현장의 편차와 실행 속도 격차를 사례 중심으로 제시했습니다"
         else:
-            gist = "개별 이슈보다 방향성 코멘트 중심의 업데이트를 올렸습니다"
+            gist = "개별 뉴스보다 방향성 코멘트 중심의 업데이트를 이어갔습니다"
         lines.append(f"- @{acc}: {gist}.")
 
     return lines
