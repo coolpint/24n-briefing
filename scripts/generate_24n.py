@@ -325,6 +325,51 @@ def build_article_brief(ok_items):
     return [p1, p2, p3, p4, p5, p6, p7]
 
 
+def summarize_x_web(items):
+    if not items:
+        return []
+
+    theme_map = {
+        "개발자동화": ["agent", "cursor", "claude", "code", "auto", "automation", "workflow"],
+        "인공지능 투자·밸류": ["openai", "nvidia", "valuation", "deal", "chip", "inference"],
+        "시장심리": ["market", "stock", "wall street", "psychosis", "bubble"],
+        "창업·운영": ["startup", "office hours", "domain", "founder", "batch"],
+    }
+
+    from collections import Counter
+    c = Counter()
+    for it in items[:20]:
+        t = it["title"].lower()
+        for k, kws in theme_map.items():
+            if any(w in t for w in kws):
+                c[k] += 1
+
+    tops = [k for k, _ in c.most_common(2)]
+    lines = []
+    if tops:
+        lines.append(f"- X 포스트는 {tops[0]} 흐름이 가장 두드러졌고, {tops[1] if len(tops)>1 else '연관 이슈'}이 뒤를 이었습니다.")
+    else:
+        lines.append("- X 포스트는 단일 이슈 집중보다 코멘트 분산형 흐름이었습니다.")
+
+    by_acc = {}
+    for it in items[:8]:
+        by_acc.setdefault(it['account'], []).append(it)
+
+    for acc, rows in list(by_acc.items())[:4]:
+        texts = " ".join(r['title'] for r in rows[:2]).lower()
+        if any(w in texts for w in ["nvidia", "openai", "inference", "chip"]):
+            gist = "반도체·추론 인프라와 투자 규모를 연결해 해석하는 발언이 이어졌습니다"
+        elif any(w in texts for w in ["cursor", "agent", "code", "workflow", "auto"]):
+            gist = "코딩 작업에서 에이전트 활용 비중이 빠르게 올라가는 현상을 강조했습니다"
+        elif any(w in texts for w in ["startup", "founder", "office hours", "domain"]):
+            gist = "창업 현장의 편차와 실행 속도 격차를 체감 사례로 제시했습니다"
+        else:
+            gist = "개별 이슈보다 방향성 코멘트 중심의 업데이트를 올렸습니다"
+        lines.append(f"- @{acc}: {gist}.")
+
+    return lines
+
+
 def build_md(title, items, inactive, now_kst, x_web=None):
     lines = []
     lines.append(f"# [24N] {title}")
@@ -362,8 +407,11 @@ def build_md(title, items, inactive, now_kst, x_web=None):
     if x_web and (x_web.get("items") or x_web.get("errors")):
         lines.append("## X 웹 보강(실험)")
         if x_web.get("items"):
-            for it in x_web.get("items", [])[:6]:
-                lines.append(f"- @{it['account']} | {it['title']} | {it['link']}")
+            for line in summarize_x_web(x_web.get("items", [])):
+                lines.append(line)
+            lines.append("- 원문 링크")
+            for it in x_web.get("items", [])[:5]:
+                lines.append(f"  - @{it['account']} | {it['link']}")
         if x_web.get("errors"):
             lines.append("- 일부 계정은 웹 차단으로 수집 실패")
             for e in x_web.get("errors", [])[:6]:

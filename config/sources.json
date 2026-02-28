@@ -5,7 +5,9 @@
     "label": "Example Source",
     "type": "rss",
     "url": "https://example.com/feed",
-    "tags": ["tech"],
+    "tags": [
+      "tech"
+    ],
     "max_items": 10,
     "active": true
   },
@@ -15,7 +17,11 @@
       "label": "Marques Brownlee YouTube",
       "type": "atom",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-      "tags": ["tech", "hardware", "creator"],
+      "tags": [
+        "tech",
+        "hardware",
+        "creator"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -24,7 +30,10 @@
       "label": "Andrej Karpathy YouTube",
       "type": "atom",
       "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCcabW7890RKJzL968QWEykA",
-      "tags": ["ai", "education"],
+      "tags": [
+        "ai",
+        "education"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -33,7 +42,11 @@
       "label": "Sam Altman Blog",
       "type": "atom",
       "url": "https://blog.samaltman.com/posts.atom",
-      "tags": ["ai", "startup", "policy"],
+      "tags": [
+        "ai",
+        "startup",
+        "policy"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -42,7 +55,10 @@
       "label": "NYT Krugman RSS",
       "type": "rss",
       "url": "https://rss.nytimes.com/services/xml/rss/nyt/Krugman.xml",
-      "tags": ["macro", "economy"],
+      "tags": [
+        "macro",
+        "economy"
+      ],
       "active": false,
       "note": "Public RSS endpoint not currently available"
     },
@@ -51,26 +67,23 @@
       "label": "Paul Graham RSS",
       "type": "rss",
       "url": "https://www.aaronsw.com/2002/feeds/pgessays.rss",
-      "tags": ["startup", "essay"],
+      "tags": [
+        "startup",
+        "essay"
+      ],
       "active": false,
       "note": "Feed availability unstable; keep disabled until verified"
-    },
-    {
-      "account": "hadarss",
-      "label": "GeekNews (news.hada.io)",
-      "type": "atom",
-      "url": "https://news.hada.io/rss/news",
-      "tags": ["tech", "startup", "korea"],
-      "rank_by": "hada_points",
-      "max_items": 10,
-      "active": true
     },
     {
       "account": "mynameisdjkim",
       "label": "김단테 네이버 블로그",
       "type": "rss",
       "url": "https://rss.blog.naver.com/mynameisdj.xml",
-      "tags": ["korea", "invest", "economy"],
+      "tags": [
+        "korea",
+        "invest",
+        "economy"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -79,7 +92,11 @@
       "label": "ChinaTalk (Substack)",
       "type": "rss",
       "url": "https://www.chinatalk.media/feed",
-      "tags": ["china", "policy", "geopolitics"],
+      "tags": [
+        "china",
+        "policy",
+        "geopolitics"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -88,7 +105,9 @@
       "label": "TWO CENTS (Substack)",
       "type": "rss",
       "url": "https://twocents.substack.com/feed",
-      "tags": ["opinion"],
+      "tags": [
+        "opinion"
+      ],
       "max_items": 10,
       "active": true,
       "note": "Feed exists but posting frequency appears very low"
@@ -98,7 +117,10 @@
       "label": "THE CHIP LETTER (Substack)",
       "type": "rss",
       "url": "https://thechipletter.substack.com/feed",
-      "tags": ["semiconductor", "tech"],
+      "tags": [
+        "semiconductor",
+        "tech"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -107,7 +129,9 @@
       "label": "GRANTED (Substack)",
       "type": "rss",
       "url": "https://granted.substack.com/feed",
-      "tags": ["newsletter"],
+      "tags": [
+        "newsletter"
+      ],
       "max_items": 10,
       "active": true,
       "note": "Feed title is 'Kara Grant'; verify if this is the intended newsletter"
@@ -117,7 +141,11 @@
       "label": "Nicholas Carr (Substack: New Cartographies)",
       "type": "rss",
       "url": "https://www.newcartographies.com/feed",
-      "tags": ["media", "ai", "culture"],
+      "tags": [
+        "media",
+        "ai",
+        "culture"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -126,7 +154,11 @@
       "label": "Brian Merchant (Substack: Blood in the Machine)",
       "type": "rss",
       "url": "https://www.bloodinthemachine.com/feed",
-      "tags": ["tech", "labor", "ai"],
+      "tags": [
+        "tech",
+        "labor",
+        "ai"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -136,7 +168,11 @@
       "type": "sitemap",
       "url": "https://www.anthropic.com/sitemap.xml",
       "include_path": "/news/",
-      "tags": ["ai", "policy", "research"],
+      "tags": [
+        "ai",
+        "policy",
+        "research"
+      ],
       "max_items": 10,
       "active": true
     },
@@ -146,7 +182,11 @@
       "type": "rss",
       "url": "https://www.wired.com/feed/rss",
       "author_contains": "Steven Levy",
-      "tags": ["media", "ai", "tech"],
+      "tags": [
+        "media",
+        "ai",
+        "tech"
+      ],
       "max_items": 10,
       "active": true
     }
@@ -154,7 +194,12 @@
   "x_web_watchlist": {
     "enabled": true,
     "note": "웹 크롤링 차단 이슈로 기본 비활성. 미러/공식 대체 채널 우선.",
-    "accounts": ["karpathy", "michaeljburry", "paulg", "StevenLevy"]
+    "accounts": [
+      "karpathy",
+      "michaeljburry",
+      "paulg",
+      "StevenLevy"
+    ]
   },
   "inactive_accounts": [
     "yeoulabba",
@@ -165,6 +210,7 @@
     "atmostbeautiful",
     "xguru",
     "TheStalwart",
-    "bgurley"
+    "bgurley",
+    "hadarss"
   ]
 }
