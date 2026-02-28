@@ -1,0 +1,22 @@
+{
+  "accounts": [
+    {
+      "email": "coolpint@gmail.com",
+      "type": "gmail_app_password",
+      "imap_host": "imap.gmail.com",
+      "imap_port": 993,
+      "env_user": "MAIL_COOLPINT_USER",
+      "env_password": "MAIL_COOLPINT_APP_PASSWORD"
+    },
+    {
+      "email": "dlfjs2@snu.ac.kr",
+      "type": "gmail_oauth",
+      "token_file": "mail_setup/tokens/dlfjs2_snu_ac_kr.json"
+    },
+    {
+      "email": "sanghoon.kim@silverlining.mobi",
+      "type": "gmail_oauth",
+      "token_file": "mail_setup/tokens/sanghoon_kim_silverlining_mobi.json"
+    }
+  ]
+}
