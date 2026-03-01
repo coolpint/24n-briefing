@@ -1,0 +1,17 @@
+{
+  "tracked_stocks": [
+    {"name": "삼성전자", "ticker": "005930"},
+    {"name": "SK하이닉스", "ticker": "000660"},
+    {"name": "NAVER", "ticker": "035420"},
+    {"name": "카카오", "ticker": "035720"},
+    {"name": "LG에너지솔루션", "ticker": "373220"},
+    {"name": "현대차", "ticker": "005380"},
+    {"name": "기아", "ticker": "000270"},
+    {"name": "POSCO홀딩스", "ticker": "005490"}
+  ],
+  "commentary_sources": [
+    {"name": "연합뉴스 경제", "url": "https://www.yna.co.kr/rss/economy.xml"},
+    {"name": "매일경제 증권", "url": "https://www.mk.co.kr/rss/50200011/"},
+    {"name": "한경 증권", "url": "https://www.hankyung.com/feed/finance"}
+  ]
+}
