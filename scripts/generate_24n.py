@@ -254,77 +254,71 @@ def fetch_link_context(url: str) -> dict:
         return {"title_hint": "", "desc": "", "snippet": ""}
 
 
-def build_article_brief(ok_items):
-    if not ok_items:
-        return ["지난 24시간 신규 발행물이 없어 전일 흐름을 유지한다고 28일 정리했다."]
+def build_article_brief(ok_items, x_items=None):
+    if not ok_items and not x_items:
+        return ["간밤에 반응이 크게 붙은 이슈가 확인되지 않아 브리핑을 생략했다."]
 
-    kw_map = {
-        "에이전트·개발자동화": ["agent", "auto", "claude code", "openfang", "코딩", "자동", "메모리"],
-        "인공지능 제품경쟁": ["anthropic", "openai", "perplexity", "nano banana", "모델", "출시"],
-        "학습·지식생산": ["학습", "커리큘럼", "교육", "요약", "인사이트"],
-        "정책·안보": ["국방부", "war", "policy", "regulation", "성명"],
-        "시장·소득": ["연봉", "소득", "시장", "거시", "금리", "경제"],
+    # RSS/뉴스레터는 '여러 소스가 같은 주제를 다룬 경우'만 핵심으로 간주
+    buckets = {
+        "AI·빅테크": ["ai", "openai", "anthropic", "model", "chip", "agent", "code"],
+        "중국·지정학": ["china", "중국", "iran", "war", "sanction", "외교", "안보"],
+        "시장·거시": ["market", "stock", "inflation", "rate", "economy", "증시", "금리"],
+        "리걸테크": ["legal", "law", "contract", "court", "리걸", "법률"],
     }
 
-    counts = Counter()
-    grouped = {k: [] for k in kw_map}
-    for it in ok_items[:40]:
-        t = it["title"].lower()
-        hit = False
-        for label, kws in kw_map.items():
+    def label_of(title: str):
+        t = (title or "").lower()
+        for label, kws in buckets.items():
             if any(k in t for k in kws):
-                counts[label] += 1
-                grouped[label].append(it)
-                hit = True
-        if not hit:
-            counts["기타"] += 1
+                return label
+        return "기타"
 
-    top_labels = [k for k, _ in counts.most_common(3) if k in kw_map]
-    if len(top_labels) < 3:
-        for k in ["인공지능 제품경쟁", "에이전트·개발자동화", "정책·안보"]:
-            if k not in top_labels:
-                top_labels.append(k)
-        top_labels = top_labels[:3]
+    labeled = []
+    for it in ok_items[:40]:
+        labeled.append({**it, "topic": label_of(it.get("title", ""))})
 
-    # 링크 본문 맥락 읽기(상위 6건)
-    enriched = []
-    for it in ok_items[:6]:
-        ctx = fetch_link_context(it.get("link", ""))
-        enriched.append({**it, **ctx})
+    # 소스 중복이 있는 주제만 채택
+    topic_sources = {}
+    for it in labeled:
+        topic_sources.setdefault(it["topic"], set()).add(it["source"])
 
-    p1_particle = "과" if _has_batchim(top_labels[0]) else "와"
-    p1 = f"주요 공개 채널의 최근 24시간 발행물을 종합한 결과, {top_labels[0]}{p1_particle} {top_labels[1]} 흐름이 동시 강화됐고 {top_labels[2]} 이슈가 보완 축으로 붙는 구조가 나타났다고 28일 확인됐다."
+    picked_topics = [t for t, srcs in topic_sources.items() if t != "기타" and len(srcs) >= 2]
 
-    p2 = (
-        f"의제별로 보면 {top_labels[0]} {counts.get(top_labels[0],0)}건, "
-        f"{top_labels[1]} {counts.get(top_labels[1],0)}건, {top_labels[2]} {counts.get(top_labels[2],0)}건이 집계됐다. "
-        "단순 신제품 소개보다 작업 단위 통합과 운영 자동화 쪽으로 경쟁의 중심이 이동한 점이 공통으로 확인됐다."
-    )
+    # 중복 주제가 없으면 상위 1개만 최소 채택
+    if not picked_topics:
+        freq = Counter([it["topic"] for it in labeled if it["topic"] != "기타"])
+        if freq:
+            picked_topics = [freq.most_common(1)[0][0]]
 
-    titles = [e['title'] for e in enriched[:6]]
-    t1 = ", ".join(titles[:2]) if len(titles) >= 2 else (titles[0] if titles else "주요 업데이트")
-    t2 = ", ".join(titles[2:4]) if len(titles) >= 4 else "추가 업데이트"
+    lines = []
 
-    p3 = f"세부 항목으로는 {t1}이 상위 구간에 배치됐다. 이들 항목은 발표 형식은 달라도 운영 효율과 실행 속도를 앞세운다는 점에서 같은 흐름으로 묶인다."
-    p4 = f"그다음 구간에서는 {t2}이 뒤를 이었다. 기술 공지와 실사용형 도구가 같은 시간대에 올라오면서 독자 관심이 기능 자체보다 활용 단계로 이동하는 경향이 확인됐다."
+    if x_items:
+        lines.append("간밤에는 X에서 반응이 붙은 코멘트가 먼저 방향을 만들고, 뉴스·뉴스레터가 뒤따라 맥락을 보강하는 흐름이 나타났다.")
+    else:
+        lines.append("간밤 브리핑은 다수 소스가 동시에 다룬 주제만 추려 핵심 내용 위주로 정리했다.")
 
-    p5 = (
-        "채널 분포를 보면 커뮤니티성 소스의 발행 빈도가 높아 단기 체감 이슈를 빠르게 보여주는 장점이 있다. "
-        "반면 기관·뉴스레터 소스는 건수는 적어도 정책·거버넌스 같은 중기 변수의 방향을 제시하는 성격이 강했다."
-    )
+    # 주제별 핵심 1~2개를 실제 내용 중심으로 요약
+    for topic in picked_topics[:3]:
+        rows = [it for it in labeled if it["topic"] == topic][:2]
+        if not rows:
+            continue
+        contexts = []
+        for r in rows:
+            ctx = fetch_link_context(r.get("link", ""))
+            desc = ctx.get("desc") or ctx.get("title_hint") or r.get("title", "")
+            desc = re.sub(r"\s+", " ", desc).strip()
+            if len(desc) > 110:
+                desc = desc[:110] + "..."
+            contexts.append(desc)
+        if len(contexts) >= 2:
+            lines.append(f"{topic}에서는 {contexts[0]}와 {contexts[1]}가 핵심으로 확인됐다.")
+        else:
+            lines.append(f"{topic}에서는 {contexts[0]}가 핵심 쟁점으로 부각됐다.")
 
-    p6 = (
-        "따라서 아침 기사에서는 개별 링크를 병렬로 나열하기보다, "
-        "개발자동화 확산, 모델·서비스 경쟁, 정책 리스크의 세 축으로 재배열해 전달하는 편이 흐름 파악에 유리하다."
-    )
+    if x_items:
+        lines.append("X 반응이 높은 발언은 단순 소식 전달보다 해석 경쟁 성격이 강해, 투자·정책 판단에는 원문 발언 맥락 확인이 필요하다.")
 
-    p7 = (
-        "시장 관점에서는 기능 출시 자체보다 누가 더 짧은 주기로 운영 효율을 개선하는지가 핵심 비교 지표가 되고 있다. "
-        "정책 변수는 발표 건수와 무관하게 이벤트성 변동을 만들 수 있어 별도 모니터링이 필요하다."
-    )
-
-    return [p1, p2, p3, p4, p5, p6, p7]
-
+    return lines
 
 def summarize_x_web(items):
     if not items:
@@ -382,22 +376,12 @@ def build_md(title, items, inactive, now_kst, x_web=None):
     ok_items = [x for x in items if not x["title"].startswith("[수집 실패]")]
     err_items = [x for x in items if x["title"].startswith("[수집 실패]")]
 
-    lines.append("## 오늘의 핵심")
-    if ok_items:
-        top_sources = Counter([x["account"] for x in ok_items]).most_common(3)
-        lines.append(f"- 최근 24시간 신규 항목은 {len(ok_items)}건입니다.")
-        lines.append("- 발행 비중 상위 채널: " + ", ".join([f"@{a} {n}건" for a, n in top_sources]))
-        lines.append("- 핵심 흐름은 링크 나열이 아니라 의제 단위로 재구성했습니다.")
-    else:
-        lines.append("- 신규 항목이 없습니다.")
-    lines.append("")
-
     lines.append("## 브리핑")
-    if ok_items:
-        for p in build_article_brief(ok_items):
+    if ok_items or (x_web and x_web.get("items")):
+        for p in build_article_brief(ok_items, (x_web or {}).get("items", [])):
             lines.append(p)
     else:
-        lines.append("신규 항목이 없어 전일 흐름을 유지한다고 28일 정리했다.")
+        lines.append("반응이 큰 이슈가 없어 브리핑을 생략했다.")
     lines.append("")
 
     lines.append("## 참고 링크")
