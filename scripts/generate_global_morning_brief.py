@@ -89,34 +89,85 @@ def fetch_source(src, since_utc):
     return items
 
 
+def _match_keyword(text: str, kw: str) -> bool:
+    t = (text or "").lower()
+    k = kw.lower()
+    if re.fullmatch(r"[a-z0-9\-\.]+", k):
+        return re.search(rf"\b{re.escape(k)}\b", t) is not None
+    return k in t
+
+
 def build_brief(collected):
-    sections = ["국제정세", "글로벌경제", "중국", "일본", "빅테크·AI", "리걸테크"]
     lines = []
     lines.append("# [24N] 간밤 글로벌 동향 브리핑")
     lines.append("")
 
-    total = sum(len(v) for v in collected.values())
-    lines.append(f"- 간밤 수집 건수: {total}건")
+    all_rows = []
+    for sec, rows in collected.items():
+        for pub, title, link in rows:
+            all_rows.append({"sec": sec, "pub": pub, "title": title, "link": link})
+
+    # 반응 대체 지표: 여러 소스/섹션에서 반복되는 주제를 우선
+    topic_map = {
+        "미국-이란 충돌": ["iran", "israel", "strike", "khamenei", "middle east", "war"],
+        "중국 정책·산업": ["china", "xi", "beijing", "sportswear", "communist party"],
+        "일본·동북아 외교": ["japan", "korea", "tokyo", "ties"],
+        "빅테크·AI": ["ai", "openai", "anthropic", "model", "chip", "agent"],
+        "리걸테크": ["legal", "law", "contract", "court"],
+    }
+
+    score = {k: 0 for k in topic_map}
+    topic_rows = {k: [] for k in topic_map}
+    for r in all_rows:
+        t = (r["title"] or "").lower()
+        for topic, kws in topic_map.items():
+            if any(_match_keyword(t, k) for k in kws):
+                score[topic] += 1
+                if len(topic_rows[topic]) < 5:
+                    topic_rows[topic].append(r)
+
+    picked = [k for k, v in sorted(score.items(), key=lambda x: x[1], reverse=True) if v > 0][:3]
+
+    if not picked:
+        lines.append("간밤에는 다수 소스에서 동시에 반복된 핵심 이슈가 확인되지 않았다.")
+        return "\n".join(lines)
+
+    second = picked[1] if len(picked) > 1 else '후속 이슈'
+    third = picked[2] if len(picked) > 2 else '연관 이슈'
+    lines.append(f"{picked[0]} 관련 보도가 가장 집중됐고, 이어 {second}과 {third} 순으로 관심이 모였다.")
     lines.append("")
 
-    for sec in sections:
-        rows = sorted(collected.get(sec, []), key=lambda x: x[0], reverse=True)
-        lines.append(f"## {sec}")
+    lines.append("## 쟁점과 현안")
+    for topic in picked:
+        rows = topic_rows.get(topic, [])[:3]
         if not rows:
-            lines.append("- 신규 핵심 이슈 없음")
-            lines.append("")
             continue
-        # 해석 요약 1문장
-        lines.append(f"- 간밤에는 {sec} 관련 신규 발행 {len(rows)}건이 확인됐고, 핵심 쟁점이 빠르게 갱신되는 흐름입니다.")
-        for pub, title, link in rows[:4]:
-            lines.append(f"- {title} | {link}")
-        lines.append("")
-
-    lines.append("## 종합")
-    lines.append("- 국제정세·경제·기술 이슈가 분리되지 않고 상호 연동되는 국면입니다.")
-    lines.append("- 중국·일본 관련 정책·산업 뉴스는 공급망과 규제 흐름에 직접 연결돼 후속 점검이 필요합니다.")
-    lines.append("- 빅테크·AI와 리걸테크는 기능 발표보다 규제·도입 구조 변화 관점으로 읽는 편이 유효합니다.")
+        lines.append(f"{topic}.")
+        for r in rows:
+            lines.append(f"- {r['title']}")
     lines.append("")
+
+    lines.append("## 다르게 읽기")
+    if "미국-이란 충돌" in picked:
+        lines.append("- 중동 변수는 국제유가와 위험자산 변동성에 바로 연결돼, 외교 뉴스가 곧 금융 변수로 전이될 가능성이 크다.")
+    if "중국 정책·산업" in picked or "일본·동북아 외교" in picked:
+        lines.append("- 중국·일본 이슈는 단일 국가 뉴스로 보기보다 공급망·통상·외교 축에서 함께 읽는 편이 정확하다.")
+    if "빅테크·AI" in picked or "리걸테크" in picked:
+        lines.append("- AI·리걸테크는 신기능 발표보다 도입 속도와 규제 대응 역량에서 기업 간 격차가 벌어지는 국면이다.")
+    lines.append("")
+
+    lines.append("## 원문 링크")
+    shown = 0
+    for topic in picked:
+        for r in topic_rows.get(topic, [])[:2]:
+            lines.append(f"- {r['title']} | {r['link']}")
+            shown += 1
+            if shown >= 8:
+                break
+        if shown >= 8:
+            break
+    lines.append("")
+
     return "\n".join(lines)
 
 
@@ -136,8 +187,6 @@ def main():
             errors.append(f"{src['name']}: {e}")
 
     md = build_brief(collected)
-    if errors:
-        md += "\n## 수집 오류\n" + "\n".join([f"- {e}" for e in errors]) + "\n"
 
     kst = dt.timezone(dt.timedelta(hours=9))
     out = OUT_DIR / f"24n-global-{dt.datetime.now(kst).strftime('%Y-%m-%d')}.md"
