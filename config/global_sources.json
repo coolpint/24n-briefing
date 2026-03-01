@@ -1,0 +1,15 @@
+{
+  "sources": [
+    {"name": "Reuters World", "url": "https://feeds.reuters.com/Reuters/worldNews", "category": "국제정세"},
+    {"name": "Reuters Business", "url": "https://feeds.reuters.com/reuters/businessNews", "category": "글로벌경제"},
+    {"name": "Reuters Technology", "url": "https://feeds.reuters.com/reuters/technologyNews", "category": "빅테크·AI"},
+    {"name": "BBC World", "url": "http://feeds.bbci.co.uk/news/world/rss.xml", "category": "국제정세"},
+    {"name": "BBC Business", "url": "http://feeds.bbci.co.uk/news/business/rss.xml", "category": "글로벌경제"},
+    {"name": "SCMP China", "url": "https://www.scmp.com/rss/91/feed", "category": "중국"},
+    {"name": "The Japan Times", "url": "https://www.japantimes.co.jp/feed/", "category": "일본"},
+    {"name": "OpenAI News", "url": "https://openai.com/news/rss.xml", "category": "빅테크·AI"},
+    {"name": "Anthropic News", "url": "https://www.anthropic.com/sitemap.xml", "category": "빅테크·AI", "type": "sitemap", "include_path": "/news/"},
+    {"name": "Artificial Lawyer", "url": "https://www.artificiallawyer.com/feed/", "category": "리걸테크"},
+    {"name": "LawSites", "url": "https://www.lawsitesblog.com/feed", "category": "리걸테크"}
+  ]
+}
