@@ -392,25 +392,13 @@ def build_md(title, items, inactive, now_kst, x_web=None):
         lines.append("- 없음")
     lines.append("")
 
-    if x_web and (x_web.get("items") or x_web.get("errors")):
+    if x_web and x_web.get("items"):
         lines.append("## X 웹 보강(실험)")
-        if x_web.get("items"):
-            for line in summarize_x_web(x_web.get("items", [])):
-                lines.append(line)
-            lines.append("- 원문 링크")
-            for it in x_web.get("items", [])[:5]:
-                lines.append(f"  - @{it['account']} | {it['link']}")
-        if x_web.get("errors"):
-            lines.append("- 일부 계정은 웹 차단으로 수집 실패")
-            for e in x_web.get("errors", [])[:6]:
-                lines.append(f"  - {e}")
-        lines.append("")
-
-    if err_items:
-        lines.append("## 수집 상태 점검")
-        lines.append("- 일부 소스 수집에 실패해 자동 복구를 시도 중입니다.")
-        for it in err_items[:5]:
-            lines.append(f"- @{it['account']}: {it['link']}")
+        for line in summarize_x_web(x_web.get("items", [])):
+            lines.append(line)
+        lines.append("- 원문 링크")
+        for it in x_web.get("items", [])[:5]:
+            lines.append(f"  - @{it['account']} | {it['link']}")
         lines.append("")
 
     return "\n".join(lines)
