@@ -39,6 +39,9 @@ def main():
         return
 
     text = Path(f).read_text(encoding="utf-8")
+    if "휴장일" in text:
+        print("Skip: holiday notice suppressed")
+        return
     chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)]
     for i, c in enumerate(chunks, 1):
         if len(chunks) > 1:
