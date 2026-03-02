@@ -1,0 +1,9 @@
+{
+  "feeds": [
+    {
+      "name": "ranto28",
+      "feed_url": "https://rss.blog.naver.com/ranto28.xml",
+      "enabled": true
+    }
+  ]
+}
