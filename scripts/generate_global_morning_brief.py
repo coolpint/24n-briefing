@@ -97,6 +97,25 @@ def _match_keyword(text: str, kw: str) -> bool:
     return k in t
 
 
+
+
+def ko_summary_from_title(title: str) -> str:
+    t = (title or '').strip()
+    low = t.lower()
+    rules = [
+        (['iran','israel','strike','missile','khamenei'], '미국·이스라엘의 이란 공습과 그 여파를 다룬 보도다.'),
+        (['oil','hormuz','gas','price'], '중동 리스크가 에너지 가격과 공급망에 미칠 영향을 짚는다.'),
+        (['china','xi','beijing','party'], '중국의 정책 방향과 권력 구조 변화를 다룬 분석이다.'),
+        (['japan','korea','ties','diplomacy'], '일본과 동북아 외교 구도의 변화를 설명한 기사다.'),
+        (['ai','openai','anthropic','chip','model','agent'], 'AI 산업의 경쟁 구도와 기술·규제 변수를 해설한다.'),
+        (['legal','law','court','contract'], '법률·리걸테크 관점에서 제도 변화와 시장 영향을 짚는다.'),
+    ]
+    for kws, msg in rules:
+        if any(k in low for k in kws):
+            return msg
+    return '핵심 쟁점을 전달하는 속보·해설 기사다.'
+
+
 def build_brief(collected):
     lines = []
     lines.append("# [24N] 간밤 글로벌 동향 브리핑")
@@ -112,7 +131,7 @@ def build_brief(collected):
         "미국-이란 충돌": ["iran", "israel", "strike", "khamenei", "middle east", "war"],
         "중국 정책·산업": ["china", "xi", "beijing", "sportswear", "communist party"],
         "일본·동북아 외교": ["japan", "korea", "tokyo", "ties"],
-        "빅테크·AI": ["ai", "openai", "anthropic", "model", "chip", "agent"],
+        "빅테크·AI": ["openai", "anthropic", "nvidia", "llm", "chatgpt", "gemini", "semiconductor", "chip", "artificial intelligence", "ai"],
         "리걸테크": ["legal", "law", "contract", "court"],
     }
 
@@ -134,7 +153,7 @@ def build_brief(collected):
 
     second = picked[1] if len(picked) > 1 else '후속 이슈'
     third = picked[2] if len(picked) > 2 else '연관 이슈'
-    lines.append(f"{picked[0]} 관련 보도가 가장 집중됐고, 이어 {second}과 {third} 순으로 관심이 모였다.")
+    lines.append(f"{picked[0]} 이슈가 간밤 흐름을 주도했고, 이어 {second}과 {third}이 주요 쟁점으로 부상했다.")
     lines.append("")
 
     lines.append("## 쟁점과 현안")
@@ -145,9 +164,10 @@ def build_brief(collected):
         lines.append(f"{topic}.")
         for r in rows:
             lines.append(f"- {r['title']}")
+            lines.append(f"  - {ko_summary_from_title(r['title'])}")
     lines.append("")
 
-    lines.append("## 다르게 읽기")
+    lines.append("## 더 깊게 읽기")
     if "미국-이란 충돌" in picked:
         lines.append("- 중동 변수는 국제유가와 위험자산 변동성에 바로 연결돼, 외교 뉴스가 곧 금융 변수로 전이될 가능성이 크다.")
     if "중국 정책·산업" in picked or "일본·동북아 외교" in picked:
