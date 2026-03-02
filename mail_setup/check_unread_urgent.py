@@ -13,8 +13,22 @@ from googleapiclient.discovery import build
 
 ROOT = Path(__file__).resolve().parents[1]
 CFG = ROOT / "mail_setup" / "accounts.json"
+SECRETS = ROOT / "mail_setup" / "secrets.json"
 
 URGENT_RE = re.compile(r"긴급|urgent|asap|결제|미납|계약|소송|마감|당일|즉시|payment|invoice", re.I)
+
+
+def secret(key: str, default: str = "") -> str:
+    v = os.getenv(key)
+    if v:
+        return v
+    if SECRETS.exists():
+        try:
+            d = json.loads(SECRETS.read_text(encoding="utf-8"))
+            return d.get(key, default)
+        except Exception:
+            return default
+    return default
 
 
 def dec(v: str) -> str:
@@ -62,8 +76,8 @@ def unread_gmail_oauth(account):
 
 
 def unread_imap(account):
-    user = os.getenv(account["env_user"], account.get("email", ""))
-    pw = os.getenv(account["env_password"], "")
+    user = secret(account["env_user"], account.get("email", ""))
+    pw = secret(account["env_password"], "")
     if not pw:
         raise RuntimeError(f"missing env password: {account['env_password']}")
 

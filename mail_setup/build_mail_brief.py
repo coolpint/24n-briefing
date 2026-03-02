@@ -14,6 +14,20 @@ from googleapiclient.discovery import build
 
 ROOT = Path(__file__).resolve().parents[1]
 CFG = ROOT / "mail_setup" / "accounts.json"
+SECRETS = ROOT / "mail_setup" / "secrets.json"
+
+
+def secret(key: str, default: str = "") -> str:
+    v = os.getenv(key)
+    if v:
+        return v
+    if SECRETS.exists():
+        try:
+            d = json.loads(SECRETS.read_text(encoding="utf-8"))
+            return d.get(key, default)
+        except Exception:
+            return default
+    return default
 
 
 def dec(v: str) -> str:
@@ -66,8 +80,8 @@ def fetch_gmail_oauth(account, since_dt):
 
 
 def fetch_imap_password(account, since_dt):
-    user = os.getenv(account["env_user"], account.get("email", ""))
-    pw = os.getenv(account["env_password"], "")
+    user = secret(account["env_user"], account.get("email", ""))
+    pw = secret(account["env_password"], "")
     if not pw:
         raise RuntimeError(f"missing env password: {account['env_password']}")
     m = imaplib.IMAP4_SSL(account["imap_host"], int(account.get("imap_port", 993)))
