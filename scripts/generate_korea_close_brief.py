@@ -53,13 +53,30 @@ def main():
     now = kst_now()
     today = now.strftime('%Y%m%d')
 
-    # 시장 개장 여부: 삼성전자 당일 데이터 존재 확인
+    # 시장 개장 여부: 1) 영업일 판정 2) 데이터 지연 판정
+    # - 영업일이 아니면 휴장 안내 후 종료
+    # - 영업일인데 시세가 비어 있으면 "데이터 지연"으로 안내(휴장으로 오판하지 않음)
+    nearest_bday = stock.get_nearest_business_day_in_a_week(today)
+    is_business_day = (nearest_bday == today)
+
     chk = stock.get_market_ohlcv_by_date(today, today, '005930')
-    if chk is None or chk.empty:
+    if not is_business_day:
         out = OUT_DIR / f"24n-korea-close-{now.strftime('%Y-%m-%d')}.md"
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         out.write_text("# [24N] 한국 증시 마감 브리핑\n\n- 오늘은 한국 증시 휴장일로 확인됩니다.\n", encoding='utf-8')
         print(f"Wrote: {out}")
+        return
+
+    if chk is None or chk.empty:
+        out = OUT_DIR / f"24n-korea-close-{now.strftime('%Y-%m-%d')}.md"
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            "# [24N] 한국 증시 마감 브리핑\n\n"
+            "- 오늘은 개장일로 보이지만, 종가 데이터 반영이 지연돼 브리핑 생성을 잠시 보류합니다.\n"
+            "- 10분 후 재실행하거나 수동 실행 시 정상 수집될 가능성이 큽니다.\n",
+            encoding='utf-8'
+        )
+        print(f"Wrote (delayed data notice): {out}")
         return
 
     kospi = stock.get_index_ohlcv_by_date(today, today, '1001')

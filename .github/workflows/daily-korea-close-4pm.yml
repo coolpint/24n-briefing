@@ -2,8 +2,8 @@ name: daily-korea-close-4pm
 
 on:
   schedule:
-    # 16:00 KST = 07:00 UTC (Mon-Fri)
-    - cron: '0 7 * * 1-5'
+    # 16:10 KST = 07:10 UTC (Mon-Fri)
+    - cron: '10 7 * * 1-5'
   workflow_dispatch:
 
 permissions:
