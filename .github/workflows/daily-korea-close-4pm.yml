@@ -1,9 +1,9 @@
-name: daily-korea-close-4pm
+name: daily-korea-close-1530
 
 on:
   schedule:
-    # 16:10 KST = 07:10 UTC (Mon-Fri)
-    - cron: '10 7 * * 1-5'
+    # 15:40 KST = 06:40 UTC (Mon-Fri) / 15:30 마감 반영 후 10분 지연 실행
+    - cron: '40 6 * * 1-5'
   workflow_dispatch:
 
 permissions:
