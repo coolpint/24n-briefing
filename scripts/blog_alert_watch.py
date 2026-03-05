@@ -155,27 +155,38 @@ def main():
         if last_guid == latest.get("guid"):
             continue
 
-        # update state first to prevent duplicate spam on transient send issues
+        if token and chat_id:
+            title = (latest.get('title') or '').strip()
+            link = (latest.get('link') or '').strip()
+            body_text = fetch_article_text(link)
+            source_text = body_text or latest.get("desc", "")
+            summary = summarize_single_paragraph(source_text).strip()
+
+            # fail-closed: 필수 포맷/필드가 하나라도 비면 발송하지 않음
+            if (not title) or (not link) or (not summary):
+                print(f"SKIP_SEND_INVALID_FORMAT: {name}")
+                continue
+
+            lines = [
+                "[메르의 블로그 업데이트]",
+                f"제목: {title}",
+                f"요약: {summary}",
+                f"링크: {link}",
+            ]
+            text = "\n".join(lines)
+            if not (text.startswith("[메르의 블로그 업데이트]\n제목: ") and "\n요약: " in text and "\n링크: " in text):
+                print(f"SKIP_SEND_TEMPLATE_MISMATCH: {name}")
+                continue
+
+            send_telegram(token, chat_id, text)
+
+        # send 성공(또는 토큰 미설정 환경)에서만 상태 업데이트
         state[name] = {
             "last_guid": latest.get("guid"),
             "last_link": latest.get("link"),
             "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         }
         changed = True
-
-        if token and chat_id:
-            title = latest.get('title','(제목 없음)')
-            link = latest.get('link','')
-            body_text = fetch_article_text(link)
-            source_text = body_text or latest.get("desc", "")
-            summary = summarize_single_paragraph(source_text)
-
-            lines = []
-            lines.append("[메르의 블로그 업데이트]")
-            lines.append(f"제목: {title}")
-            lines.append(f"요약: {summary}")
-            lines.append(f"링크: {link}")
-            send_telegram(token, chat_id, "\n".join(lines))
 
     if changed:
         STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
