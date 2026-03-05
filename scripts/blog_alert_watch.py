@@ -63,35 +63,53 @@ def fetch_feed(url: str):
     return items
 
 
-def summarize_to_10_sentences(text: str):
+def clean_text(text: str) -> str:
     txt = unescape(re.sub(r"<[^>]+>", " ", text or ""))
-    txt = re.sub(r"\s+", " ", txt).strip()
+    return re.sub(r"\s+", " ", txt).strip()
+
+
+def fetch_article_text(url: str) -> str:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "24N-blogwatch/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+    # 1) og:description 우선
+    m = re.search(r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
+    if m:
+        og = clean_text(m.group(1))
+        if len(og) > 40:
+            return og
+
+    # 2) 본문 후보 태그 추출
+    candidates = []
+    for pat in [r"<article[^>]*>(.*?)</article>", r"<div[^>]+id=[\"\']postViewArea[\"\'][^>]*>(.*?)</div>"]:
+        mm = re.search(pat, html, re.I | re.S)
+        if mm:
+            candidates.append(mm.group(1))
+
+    for c in candidates:
+        t = clean_text(c)
+        if len(t) > 120:
+            return t[:2000]
+
+    return ""
+
+
+def summarize_single_paragraph(text: str) -> str:
+    txt = clean_text(text)
     if not txt:
-        return [
-            "글의 핵심 주제를 먼저 제시한다.",
-            "문제의식이 왜 중요한지 배경을 설명한다.",
-            "필자가 제시한 첫 번째 근거를 정리한다.",
-            "두 번째 근거와 맥락을 연결해 요약한다.",
-            "중간 결론에서 강조한 포인트를 짚는다.",
-            "사례나 비유가 있다면 그 의미를 풀어준다.",
-            "독자가 놓치기 쉬운 함의를 덧붙인다.",
-            "실무·현실에 미치는 영향을 짚는다.",
-            "남는 쟁점이나 반론 가능성을 정리한다.",
-            "글 전체를 한 줄 메시지로 정리한다.",
-        ]
+        return "본문 요약을 추출하지 못해, 링크 원문 확인이 필요합니다."
 
-    sents = re.split(r"(?<=[.!?。]|[다요죠습니다])\s+", txt)
-    sents = [s.strip(' .') for s in sents if len(s.strip()) > 12]
+    sents = re.split(r"(?<=[.!?。])\s+", txt)
+    sents = [s.strip() for s in sents if len(s.strip()) > 18]
+    if not sents:
+        return txt[:220]
 
-    out = []
-    for s in sents:
-        if len(out) >= 10:
-            break
-        out.append(s + ("." if not s.endswith((".", "!", "?")) else ""))
-
-    while len(out) < 10:
-        out.append("본문에서 반복된 핵심 메시지는 일관되게 유지된다.")
-    return out[:10]
+    out = " ".join(sents[:3]).strip()
+    return out[:480]
 
 
 def send_telegram(token: str, chat_id: str, text: str):
@@ -146,21 +164,18 @@ def main():
         changed = True
 
         if token and chat_id:
-            summary = summarize_to_10_sentences(latest.get("desc", ""))
-            lines = []
-            lines.append(f"[{name}] 새 글 업데이트")
-            lines.append(f"제목: {latest.get('title','(제목 없음)')}")
-            lines.append("")
-            lines.append("요약(10문장)")
-            for i, s in enumerate(summary, 1):
-                lines.append(f"{i}. {s}")
-            lines.append("")
-            lines.append(f"링크: {latest.get('link','')}")
-            text = "\n".join(lines)
+            title = latest.get('title','(제목 없음)')
+            link = latest.get('link','')
+            body_text = fetch_article_text(link)
+            source_text = body_text or latest.get("desc", "")
+            summary = summarize_single_paragraph(source_text)
 
-            chunks = [text[i:i+3800] for i in range(0, len(text), 3800)]
-            for c in chunks:
-                send_telegram(token, chat_id, c)
+            lines = []
+            lines.append("[메르의 블로그 업데이트]")
+            lines.append(f"제목: {title}")
+            lines.append(f"요약: {summary}")
+            lines.append(f"링크: {link}")
+            send_telegram(token, chat_id, "\n".join(lines))
 
     if changed:
         STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
