@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
+import email
+import imaplib
 import json
 import os
 import re
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from check_unread_urgent import CFG, dec, is_urgent, unread_gmail_oauth, unread_imap
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+from check_unread_urgent import CFG, unread_gmail_oauth, unread_imap
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE_PATH = ROOT / "mail_setup" / "output" / "urgent_notified_ids.json"
@@ -77,9 +83,69 @@ def send_telegram(text: str):
     return True
 
 
+def cleanup_nyt_breaking() -> tuple[int, list[str]]:
+    cfg = load_json(CFG, {})
+    total_deleted = 0
+    errors = []
+
+    for a in cfg.get("accounts", []):
+        try:
+            acc_type = a.get("type")
+            if acc_type == "gmail_oauth":
+                token_path = ROOT / a["token_file"]
+                creds = Credentials.from_authorized_user_file(
+                    str(token_path),
+                    scopes=["https://www.googleapis.com/auth/gmail.modify"],
+                )
+                if creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                    token_path.write_text(creds.to_json(), encoding="utf-8")
+
+                svc = build("gmail", "v1", credentials=creds, cache_discovery=False)
+                q = 'in:inbox subject:"Breaking News:" from:(nytimes.com) older_than:2d'
+                resp = svc.users().messages().list(userId="me", q=q, maxResults=200).execute()
+                msgs = resp.get("messages", [])
+                while True:
+                    for m in msgs:
+                        svc.users().messages().trash(userId="me", id=m["id"]).execute()
+                        total_deleted += 1
+                    nxt = resp.get("nextPageToken")
+                    if not nxt:
+                        break
+                    resp = svc.users().messages().list(userId="me", q=q, maxResults=200, pageToken=nxt).execute()
+                    msgs = resp.get("messages", [])
+            else:
+                user = get_secret(a["env_user"], a.get("email", ""))
+                pw = get_secret(a["env_password"], "")
+                if not pw:
+                    continue
+                m = imaplib.IMAP4_SSL(a["imap_host"], int(a.get("imap_port", 993)))
+                m.login(user, pw)
+                m.select("INBOX")
+                before = (datetime.now(timezone.utc) - timedelta(hours=48)).strftime("%d-%b-%Y")
+                typ, data = m.search(None, 'SUBJECT "Breaking News:"', f'FROM "nytimes.com"', f'BEFORE {before}')
+                ids = data[0].split() if (typ == "OK" and data and data[0]) else []
+                for mid in ids:
+                    m.store(mid, "+FLAGS", "\\Deleted")
+                if ids:
+                    m.expunge()
+                    total_deleted += len(ids)
+                m.logout()
+        except Exception as e:
+            errors.append(f"cleanup {a.get('email','unknown')}: {e}")
+
+    return total_deleted, errors
+
+
 def main():
     state = load_json(STATE_PATH, {"notified": []})
     notified = set(state.get("notified", []))
+
+    deleted, cleanup_errors = cleanup_nyt_breaking()
+    if deleted:
+        log(f"NYT breaking cleanup deleted: {deleted}")
+    if cleanup_errors:
+        log("; ".join(cleanup_errors))
 
     urgent, errors = collect_urgent()
     if errors:
