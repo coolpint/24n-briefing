@@ -53,13 +53,26 @@ def main():
     now = kst_now()
     today = now.strftime('%Y%m%d')
 
-    # 시장 개장 여부: 1) 영업일 판정 2) 데이터 지연 판정
-    # - 영업일이 아니면 휴장 안내 후 종료
-    # - 영업일인데 시세가 비어 있으면 "데이터 지연"으로 안내(휴장으로 오판하지 않음)
-    nearest_bday = stock.get_nearest_business_day_in_a_week(today)
-    is_business_day = (nearest_bday == today)
+    try:
+        # 시장 개장 여부: 1) 영업일 판정 2) 데이터 지연 판정
+        # - 영업일이 아니면 휴장 안내 후 종료
+        # - 영업일인데 시세가 비어 있으면 "데이터 지연"으로 안내(휴장으로 오판하지 않음)
+        nearest_bday = stock.get_nearest_business_day_in_a_week(today)
+        is_business_day = (nearest_bday == today)
 
-    chk = stock.get_market_ohlcv_by_date(today, today, '005930')
+        chk = stock.get_market_ohlcv_by_date(today, today, '005930')
+    except Exception as e:
+        out = OUT_DIR / f"24n-korea-close-{now.strftime('%Y-%m-%d')}.md"
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            "# [24N] 한국 증시 마감 브리핑\n\n"
+            "- KRX 데이터 조회 중 일시 오류가 발생해 브리핑 생성을 보류합니다.\n"
+            "- 잠시 후 재실행 시 정상화될 수 있습니다.\n"
+            f"- 오류: {e}\n",
+            encoding='utf-8'
+        )
+        print(f"Wrote (fetch error notice): {out}")
+        return
     if not is_business_day:
         out = OUT_DIR / f"24n-korea-close-{now.strftime('%Y-%m-%d')}.md"
         OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -79,8 +92,20 @@ def main():
         print(f"Wrote (delayed data notice): {out}")
         return
 
-    kospi = stock.get_index_ohlcv_by_date(today, today, '1001')
-    kosdaq = stock.get_index_ohlcv_by_date(today, today, '2001')
+    try:
+        kospi = stock.get_index_ohlcv_by_date(today, today, '1001')
+        kosdaq = stock.get_index_ohlcv_by_date(today, today, '2001')
+    except Exception as e:
+        out = OUT_DIR / f"24n-korea-close-{now.strftime('%Y-%m-%d')}.md"
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            "# [24N] 한국 증시 마감 브리핑\n\n"
+            "- 지수 데이터 조회 중 일시 오류가 발생해 브리핑 생성을 보류합니다.\n"
+            f"- 오류: {e}\n",
+            encoding='utf-8'
+        )
+        print(f"Wrote (index fetch error notice): {out}")
+        return
 
     def idx_line(name, df):
         if df is None or df.empty:
