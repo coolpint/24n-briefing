@@ -16,6 +16,8 @@ CFG = ROOT / "mail_setup" / "accounts.json"
 SECRETS = ROOT / "mail_setup" / "secrets.json"
 
 URGENT_RE = re.compile(r"긴급|urgent|asap|결제|미납|계약|소송|마감|당일|즉시|payment|invoice", re.I)
+EXCLUDE_RE = re.compile(r"자산운용보고서|운용보고서", re.I)
+EXCLUDE_SENDER_RE = re.compile(r"@ksdreport\.or\.kr", re.I)
 
 
 def secret(key: str, default: str = "") -> str:
@@ -44,7 +46,12 @@ def dec(v: str) -> str:
 
 
 def is_urgent(subject: str, sender: str) -> bool:
-    return bool(URGENT_RE.search(f"{subject} {sender}"))
+    text = f"{subject} {sender}"
+    if EXCLUDE_RE.search(text):
+        return False
+    if EXCLUDE_SENDER_RE.search(sender or ""):
+        return False
+    return bool(URGENT_RE.search(text))
 
 
 def unread_gmail_oauth(account):
