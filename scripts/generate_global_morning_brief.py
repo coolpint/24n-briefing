@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime as dt
+import html
 import json
 import re
 import urllib.request
@@ -24,6 +25,16 @@ def child_text(node, names):
     return ""
 
 
+def node_inner_text(node):
+    if node is None:
+        return ""
+    txt = "".join(node.itertext())
+    txt = html.unescape(txt)
+    txt = re.sub(r"<[^>]+>", " ", txt)
+    txt = re.sub(r"\s+", " ", txt).strip()
+    return txt
+
+
 def parse_dt(s):
     if not s:
         return None
@@ -39,8 +50,18 @@ def parse_dt(s):
         return None
 
 
+def normalize_summary(text: str, limit: int = 180) -> str:
+    t = (text or "").strip()
+    if not t:
+        return ""
+    t = re.sub(r"\s+", " ", t)
+    if len(t) <= limit:
+        return t
+    return t[:limit].rstrip() + "…"
+
+
 def fetch_source(src, since_utc):
-    req = urllib.request.Request(src["url"], headers={"User-Agent": "24N-global/1.0"})
+    req = urllib.request.Request(src["url"], headers={"User-Agent": "24N-global/1.1"})
     with urllib.request.urlopen(req, timeout=20) as resp:
         raw = resp.read()
 
@@ -61,7 +82,7 @@ def fetch_source(src, since_utc):
                 pub = pub.replace(tzinfo=dt.timezone.utc)
             if pub >= since_utc:
                 title = link.rstrip('/').split('/')[-1].replace('-', ' ')
-                items.append((pub, title, link))
+                items.append({"pub": pub, "title": title, "link": link, "summary": ""})
         return items
 
     if root_name == "rss":
@@ -79,13 +100,25 @@ def fetch_source(src, since_utc):
             lk = it.find("{*}link")
             if lk is not None:
                 link = lk.attrib.get("href", "")
+
+        summary = child_text(it, ["description", "summary", "content"])
+        if not summary:
+            summary = node_inner_text(it.find("{*}description"))
+        if not summary:
+            summary = node_inner_text(it.find("{*}summary"))
+
         pub = parse_dt(child_text(it, ["pubDate", "published", "updated", "date"]))
         if not pub:
             continue
         if pub.tzinfo is None:
             pub = pub.replace(tzinfo=dt.timezone.utc)
         if pub >= since_utc:
-            items.append((pub, title, link))
+            items.append({
+                "pub": pub,
+                "title": title,
+                "link": link,
+                "summary": normalize_summary(summary),
+            })
     return items
 
 
@@ -97,17 +130,31 @@ def _match_keyword(text: str, kw: str) -> bool:
     return k in t
 
 
+def topic_brief(topic: str, rows: list[dict]) -> str:
+    summaries = [r.get("summary", "") for r in rows if r.get("summary")]
+    if summaries:
+        # 같은 표현 반복 방지
+        uniq = []
+        seen = set()
+        for s in summaries:
+            key = s.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            uniq.append(s)
+            if len(uniq) >= 2:
+                break
+        if uniq:
+            return " ".join(uniq)
 
-
-def topic_brief(topic: str) -> str:
-    briefs = {
-        "미국-이란 충돌": "중동 관련 보도가 연속으로 나오며 긴장 국면이 이어지는 흐름이다. 외교·군사 이슈가 에너지와 위험자산 변동성으로 전이될 가능성에 시장이 민감하게 반응하고 있다.",
-        "중국 정책·산업": "중국 정책 관련 보도가 정책 우선순위와 성장·기술 전략의 방향성을 재확인하는 재료로 작동했다. 대내 통제 강화와 산업 경쟁력 관리 이슈를 함께 볼 필요가 있다.",
-        "일본·동북아 외교": "동북아 외교 관련 뉴스가 통상·안보 변수와 맞물리며 정책 불확실성을 키우는 흐름이다. 단일 국가 이슈보다 지역 질서 재편 관점에서 읽는 편이 정확하다.",
-        "빅테크·AI": "빅테크·AI 관련 이슈는 기술 경쟁보다 규제·책임 구조 정비의 속도가 핵심 변수라는 점을 다시 확인했다. 서비스 확산과 제도 정비 사이 간극이 주요 리스크로 부상하고 있다.",
-        "리걸테크": "리걸테크 이슈는 기능 출시보다 실제 도입 속도와 규제 적합성, 책임 배분 구조가 성패를 가르는 국면으로 이동하고 있다.",
+    fallback = {
+        "미국-이란 충돌": "중동 관련 보도가 연속으로 나오며 긴장 국면이 이어지는 흐름이다.",
+        "중국 정책·산업": "중국 정책 관련 보도가 정책 우선순위와 성장·기술 전략의 방향성을 재확인하는 재료로 작동했다.",
+        "일본·동북아 외교": "동북아 외교 관련 뉴스가 통상·안보 변수와 맞물리며 정책 불확실성을 키우는 흐름이다.",
+        "빅테크·AI": "빅테크·AI는 기술 경쟁뿐 아니라 규제·책임 구조 정비 속도가 핵심 변수로 부상했다.",
+        "리걸테크": "리걸테크는 기능 출시보다 실제 도입 속도와 규제 적합성이 핵심 쟁점으로 이동했다.",
     }
-    return briefs.get(topic, "해당 이슈가 단기 뉴스 재료를 넘어 정책·시장 변수로 연결되는 흐름이다.")
+    return fallback.get(topic, "해당 이슈가 단기 뉴스 재료를 넘어 정책·시장 변수로 연결되는 흐름이다.")
 
 
 def build_brief(collected):
@@ -116,28 +163,25 @@ def build_brief(collected):
     lines.append("")
 
     all_rows = []
-    for sec, rows in collected.items():
-        for pub, title, link in rows:
-            all_rows.append({"sec": sec, "pub": pub, "title": title, "link": link})
+    for _, rows in collected.items():
+        all_rows.extend(rows)
 
-    # 반응 대체 지표: 여러 소스/섹션에서 반복되는 주제를 우선
     topic_map = {
-        "미국-이란 충돌": ["iran", "israel", "strike", "khamenei", "middle east", "war"],
-        "중국 정책·산업": ["china", "xi", "beijing", "sportswear", "communist party"],
-        "일본·동북아 외교": ["japan", "korea", "tokyo", "ties"],
-        "빅테크·AI": ["openai", "anthropic", "nvidia", "llm", "chatgpt", "gemini", "semiconductor", "chip", "artificial intelligence", "ai"],
+        "미국-이란 충돌": ["iran", "israel", "strike", "middle east", "war", "oil"],
+        "중국 정책·산업": ["china", "xi", "beijing", "import", "innovation", "5-year"],
+        "일본·동북아 외교": ["japan", "korea", "tokyo", "east asia", "evacuate"],
+        "빅테크·AI": ["openai", "anthropic", "nvidia", "llm", "chatgpt", "gemini", "chip", "ai"],
         "리걸테크": ["legal", "law", "contract", "court"],
     }
 
     score = {k: 0 for k in topic_map}
     topic_rows = {k: [] for k in topic_map}
     for r in all_rows:
-        t = (r["title"] or "").lower()
+        text = f"{r.get('title', '')} {r.get('summary', '')}".lower()
         for topic, kws in topic_map.items():
-            if any(_match_keyword(t, k) for k in kws):
+            if any(_match_keyword(text, k) for k in kws):
                 score[topic] += 1
-                if len(topic_rows[topic]) < 5:
-                    topic_rows[topic].append(r)
+                topic_rows[topic].append(r)
 
     picked = [k for k, v in sorted(score.items(), key=lambda x: x[1], reverse=True) if v > 0][:3]
 
@@ -153,10 +197,15 @@ def build_brief(collected):
     lines.append("쟁점과 현안")
     lines.append("")
     for topic in picked:
-        if not topic_rows.get(topic):
+        rows = sorted(topic_rows.get(topic, []), key=lambda x: x.get("pub"), reverse=True)
+        rows = rows[:3]
+        if not rows:
             continue
         lines.append(f"• {topic}")
-        lines.append(topic_brief(topic))
+        lines.append(topic_brief(topic, rows))
+        for r in rows:
+            if r.get("summary"):
+                lines.append(f"  - {r['title']}: {r['summary']}")
         lines.append("")
 
     lines.append("원문 링크")
@@ -164,17 +213,19 @@ def build_brief(collected):
     shown = 0
     seen_links = set()
     for topic in picked:
-        for r in topic_rows.get(topic, [])[:4]:
-            if not r["link"] or r["link"] in seen_links:
+        rows = sorted(topic_rows.get(topic, []), key=lambda x: x.get("pub"), reverse=True)
+        for r in rows:
+            link = r.get("link", "")
+            if not link or link in seen_links:
                 continue
-            seen_links.add(r["link"])
-            lines.append(f"• {r['title']}")
-            lines.append(f"[{r['link']}]({r['link']})")
+            seen_links.add(link)
+            lines.append(f"• {r.get('title', '').strip()}")
+            lines.append(f"[{link}]({link})")
             lines.append("")
             shown += 1
-            if shown >= 8:
+            if shown >= 10:
                 break
-        if shown >= 8:
+        if shown >= 10:
             break
 
     return "\n".join(lines)
@@ -185,15 +236,14 @@ def main():
     since_utc = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=12)
 
     collected = {}
-    errors = []
     for src in cfg["sources"]:
         sec = src["category"]
         collected.setdefault(sec, [])
         try:
             items = fetch_source(src, since_utc)
             collected[sec].extend(items)
-        except Exception as e:
-            errors.append(f"{src['name']}: {e}")
+        except Exception:
+            continue
 
     md = build_brief(collected)
 
