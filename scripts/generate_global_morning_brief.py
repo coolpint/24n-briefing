@@ -99,21 +99,15 @@ def _match_keyword(text: str, kw: str) -> bool:
 
 
 
-def ko_summary_from_title(title: str) -> str:
-    t = (title or '').strip()
-    low = t.lower()
-    rules = [
-        (['iran','israel','strike','missile','khamenei'], '미국·이스라엘의 이란 공습과 그 여파를 다룬 보도다.'),
-        (['oil','hormuz','gas','price'], '중동 리스크가 에너지 가격과 공급망에 미칠 영향을 짚는다.'),
-        (['china','xi','beijing','party'], '중국의 정책 방향과 권력 구조 변화를 다룬 분석이다.'),
-        (['japan','korea','ties','diplomacy'], '일본과 동북아 외교 구도의 변화를 설명한 기사다.'),
-        (['ai','openai','anthropic','chip','model','agent'], 'AI 산업의 경쟁 구도와 기술·규제 변수를 해설한다.'),
-        (['legal','law','court','contract'], '법률·리걸테크 관점에서 제도 변화와 시장 영향을 짚는다.'),
-    ]
-    for kws, msg in rules:
-        if any(k in low for k in kws):
-            return msg
-    return '핵심 쟁점을 전달하는 속보·해설 기사다.'
+def topic_brief(topic: str) -> str:
+    briefs = {
+        "미국-이란 충돌": "중동 관련 보도가 연속으로 나오며 긴장 국면이 이어지는 흐름이다. 외교·군사 이슈가 에너지와 위험자산 변동성으로 전이될 가능성에 시장이 민감하게 반응하고 있다.",
+        "중국 정책·산업": "중국 정책 관련 보도가 정책 우선순위와 성장·기술 전략의 방향성을 재확인하는 재료로 작동했다. 대내 통제 강화와 산업 경쟁력 관리 이슈를 함께 볼 필요가 있다.",
+        "일본·동북아 외교": "동북아 외교 관련 뉴스가 통상·안보 변수와 맞물리며 정책 불확실성을 키우는 흐름이다. 단일 국가 이슈보다 지역 질서 재편 관점에서 읽는 편이 정확하다.",
+        "빅테크·AI": "빅테크·AI 관련 이슈는 기술 경쟁보다 규제·책임 구조 정비의 속도가 핵심 변수라는 점을 다시 확인했다. 서비스 확산과 제도 정비 사이 간극이 주요 리스크로 부상하고 있다.",
+        "리걸테크": "리걸테크 이슈는 기능 출시보다 실제 도입 속도와 규제 적합성, 책임 배분 구조가 성패를 가르는 국면으로 이동하고 있다.",
+    }
+    return briefs.get(topic, "해당 이슈가 단기 뉴스 재료를 넘어 정책·시장 변수로 연결되는 흐름이다.")
 
 
 def build_brief(collected):
@@ -153,40 +147,35 @@ def build_brief(collected):
 
     second = picked[1] if len(picked) > 1 else '후속 이슈'
     third = picked[2] if len(picked) > 2 else '연관 이슈'
-    lines.append(f"{picked[0]} 이슈가 간밤 흐름을 주도했고, 이어 {second}과 {third}이 주요 쟁점으로 부상했다.")
+    lines.append(f"{picked[0]} 이슈가 간밤 흐름을 주도했고, 이어 {second} 이슈와 {third} 논점이 함께 부상했다.")
     lines.append("")
 
-    lines.append("## 쟁점과 현안")
+    lines.append("쟁점과 현안")
+    lines.append("")
     for topic in picked:
-        rows = topic_rows.get(topic, [])[:3]
-        if not rows:
+        if not topic_rows.get(topic):
             continue
-        lines.append(f"{topic}.")
-        for r in rows:
-            lines.append(f"- {r['title']}")
-            lines.append(f"  - {ko_summary_from_title(r['title'])}")
-    lines.append("")
+        lines.append(f"• {topic}")
+        lines.append(topic_brief(topic))
+        lines.append("")
 
-    lines.append("## 더 깊게 읽기")
-    if "미국-이란 충돌" in picked:
-        lines.append("- 중동 변수는 국제유가와 위험자산 변동성에 바로 연결돼, 외교 뉴스가 곧 금융 변수로 전이될 가능성이 크다.")
-    if "중국 정책·산업" in picked or "일본·동북아 외교" in picked:
-        lines.append("- 중국·일본 이슈는 단일 국가 뉴스로 보기보다 공급망·통상·외교 축에서 함께 읽는 편이 정확하다.")
-    if "빅테크·AI" in picked or "리걸테크" in picked:
-        lines.append("- AI·리걸테크는 신기능 발표보다 도입 속도와 규제 대응 역량에서 기업 간 격차가 벌어지는 국면이다.")
+    lines.append("원문 링크")
     lines.append("")
-
-    lines.append("## 원문 링크")
     shown = 0
+    seen_links = set()
     for topic in picked:
-        for r in topic_rows.get(topic, [])[:2]:
-            lines.append(f"- {r['title']} | {r['link']}")
+        for r in topic_rows.get(topic, [])[:4]:
+            if not r["link"] or r["link"] in seen_links:
+                continue
+            seen_links.add(r["link"])
+            lines.append(f"• {r['title']}")
+            lines.append(f"[{r['link']}]({r['link']})")
+            lines.append("")
             shown += 1
             if shown >= 8:
                 break
         if shown >= 8:
             break
-    lines.append("")
 
     return "\n".join(lines)
 
