@@ -98,18 +98,30 @@ def fetch_article_text(url: str) -> str:
     return ""
 
 
+NOISE_RE = re.compile(r"출처|unsplash|copyright|무단전재|재배포|구독|광고|댓글|좋아요|공유|관련기사", re.I)
+
+
 def summarize_single_paragraph(text: str) -> str:
     txt = clean_text(text)
     if not txt:
-        return "본문 요약을 추출하지 못해, 링크 원문 확인이 필요합니다."
+        return "본문 요약을 추출하지 못해 링크 원문 확인이 필요하다."
 
-    sents = re.split(r"(?<=[.!?。])\s+", txt)
-    sents = [s.strip() for s in sents if len(s.strip()) > 18]
-    if not sents:
-        return txt[:220]
+    sents = re.split(r"(?<=[.!?。다])\s+", txt)
+    cleaned = []
+    for s in sents:
+        s = s.strip(" -•\t")
+        if len(s) < 25:
+            continue
+        if NOISE_RE.search(s):
+            continue
+        cleaned.append(s)
 
-    out = " ".join(sents[:3]).strip()
-    return out[:480]
+    if not cleaned:
+        cleaned = [txt[:260]]
+
+    out = " ".join(cleaned[:2]).strip()
+    out = re.sub(r"\s+", " ", out)
+    return out[:420]
 
 
 def send_telegram(token: str, chat_id: str, text: str):
@@ -159,7 +171,8 @@ def main():
             title = (latest.get('title') or '').strip()
             link = (latest.get('link') or '').strip()
             body_text = fetch_article_text(link)
-            source_text = body_text or latest.get("desc", "")
+            # RSS description을 우선 사용하고, 비어 있으면 본문 추출로 보완
+            source_text = (latest.get("desc", "") or "").strip() or body_text
             summary = summarize_single_paragraph(source_text).strip()
 
             # fail-closed: 필수 포맷/필드가 하나라도 비면 발송하지 않음
@@ -176,6 +189,11 @@ def main():
             text = "\n".join(lines)
             if not (text.startswith("[메르의 블로그 업데이트]\n제목: ") and "\n요약: " in text and "\n링크: " in text):
                 print(f"SKIP_SEND_TEMPLATE_MISMATCH: {name}")
+                continue
+            # 형식 오염 방지: 정확히 4줄 템플릿만 허용
+            row_count = len(text.splitlines())
+            if row_count != 4:
+                print(f"SKIP_SEND_ROWCOUNT_MISMATCH: {name} ({row_count})")
                 continue
 
             send_telegram(token, chat_id, text)
