@@ -11,7 +11,9 @@ OUT_DIR = ROOT / "output"
 
 
 def find_latest_file() -> Path | None:
-    files = sorted(OUT_DIR.glob("24n-*.md"))
+    # 일반 24N 아침 브리핑 파일만 대상으로 삼는다.
+    # (예: 24n-2026-03-09.md) / 24n-global-*, 24n-korea-close-* 제외
+    files = sorted(OUT_DIR.glob("24n-????-??-??.md"))
     return files[-1] if files else None
 
 

@@ -53,6 +53,12 @@ def main():
     now = kst_now()
     today = now.strftime('%Y%m%d')
 
+    # 안전장치: 평일 15:30(KST) 이전 실행은 마감 브리핑 생성하지 않음
+    # (오스케줄/수동 오실행으로 새벽 오류 공지가 발송되는 문제 방지)
+    if now.weekday() < 5 and (now.hour, now.minute) < (15, 30):
+        print("Skip: before market close (KST 15:30)")
+        return
+
     try:
         # 시장 개장 여부: pykrx의 영업일 API가 빈 응답으로 예외를 던질 수 있어,
         # 직접 종목 시세 존재 + 요일 기반으로 판정한다.
@@ -89,28 +95,44 @@ def main():
         print(f"Wrote (delayed data notice): {out}")
         return
 
+    kospi = None
+    kosdaq = None
+    idx_fetch_err = None
     try:
         kospi = stock.get_index_ohlcv_by_date(today, today, '1001')
         kosdaq = stock.get_index_ohlcv_by_date(today, today, '2001')
     except Exception as e:
-        out = OUT_DIR / f"24n-korea-close-{now.strftime('%Y-%m-%d')}.md"
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        out.write_text(
-            "# [24N] 한국 증시 마감 브리핑\n\n"
-            "- 지수 데이터 조회 중 일시 오류가 발생해 브리핑 생성을 보류합니다.\n"
-            f"- 오류: {e}\n",
-            encoding='utf-8'
-        )
-        print(f"Wrote (index fetch error notice): {out}")
-        return
+        # pykrx 인덱스 API가 간헐적으로 KeyError('지수명')를 내는 경우가 있어
+        # 하단의 등락률 테이블로 대체 조회를 시도한다.
+        idx_fetch_err = e
 
-    def idx_line(name, df):
-        if df is None or df.empty:
-            return f"- {name}: 데이터 없음"
-        row = df.iloc[-1]
-        close_ = float(row['종가'])
-        chg = float(row['등락률'])
-        return f"- {name}: {close_:,.2f} ({chg:+.2f}%)"
+    try:
+        pc_idx = stock.get_index_price_change_by_ticker(today, today)
+    except Exception:
+        pc_idx = None
+
+    def idx_line(name, df, pc_idx_df):
+        if df is not None and not df.empty:
+            row = df.iloc[-1]
+            close_ = float(row['종가'])
+            chg = float(row['등락률'])
+            return f"- {name}: {close_:,.2f} ({chg:+.2f}%)"
+
+        # 대체 경로: 지수 등락률 테이블 활용
+        if pc_idx_df is not None and not pc_idx_df.empty:
+            key = name
+            if key in pc_idx_df.index:
+                r = pc_idx_df.loc[key]
+                try:
+                    close_ = float(r['종가'])
+                    chg = float(r['등락률'])
+                    return f"- {name}: {close_:,.2f} ({chg:+.2f}%)"
+                except Exception:
+                    pass
+
+        if idx_fetch_err is not None:
+            return f"- {name}: 데이터 없음 (지수 API 오류: {idx_fetch_err})"
+        return f"- {name}: 데이터 없음"
 
     # 당일 등락 상하위
     pc = stock.get_market_price_change_by_ticker(today, today)
@@ -145,8 +167,8 @@ def main():
     lines.append('# [24N] 한국 증시 마감 브리핑')
     lines.append('')
     lines.append('## 오늘 시황')
-    lines.append(idx_line('코스피', kospi))
-    lines.append(idx_line('코스닥', kosdaq))
+    lines.append(idx_line('코스피', kospi, pc_idx))
+    lines.append(idx_line('코스닥', kosdaq, pc_idx))
     lines.append('')
 
     lines.append('## 상승 상위 5')

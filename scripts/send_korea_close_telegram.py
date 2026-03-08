@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import glob
+import datetime as dt
 import os
 import urllib.parse
 import urllib.request
@@ -10,8 +10,11 @@ OUT = ROOT / "output"
 
 
 def latest_file():
-    files = sorted(glob.glob(str(OUT / "24n-korea-close-*.md")))
-    return files[-1] if files else None
+    # 당일 마감 브리핑만 전송한다.
+    now = dt.datetime.now(dt.timezone(dt.timedelta(hours=9)))
+    today = now.strftime('%Y-%m-%d')
+    f = OUT / f"24n-korea-close-{today}.md"
+    return str(f) if f.exists() else None
 
 
 def send(token, chat_id, text):
@@ -39,8 +42,9 @@ def main():
         return
 
     text = Path(f).read_text(encoding="utf-8")
-    if "휴장일" in text:
-        print("Skip: holiday notice suppressed")
+    # 상태/오류 공지는 텔레그램 발송에서 제외
+    if ("휴장일" in text) or ("브리핑 생성을 보류" in text) or ("오류:" in text):
+        print("Skip: holiday/error notice suppressed")
         return
     chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)]
     for i, c in enumerate(chunks, 1):
