@@ -148,7 +148,7 @@ def fallback_summary(title: str) -> str:
 
 
 def topic_intro(topic: str, count: int) -> str:
-    return f"해당 토픽에서 간밤 새 기사 {count}건이 확인됐다. 아래 항목에 핵심 사실을 기사별로 정리했다."
+    return f"간밤 이슈 관련 기사 {count}건을 확인했다. 핵심 사실을 기사별로 정리한다."
 
 
 def build_brief(collected):
@@ -198,22 +198,22 @@ def build_brief(collected):
         lines.append("간밤 글로벌 이슈가 다면적으로 분산됐다.")
     lines.append("")
 
-    # 2) 쟁점과 현안: 누락 없이 모든 기사 포함
-    lines.append("쟁점과 현안")
-    lines.append("")
+    # 2) 핵심 이슈 요약: 별도 '쟁점/현안', '다르게 읽기' 섹션 없이 상세 요약
     used_links = set()
+    issue_no = 1
 
     for topic, rows in sorted_topics:
         if not rows:
             continue
-        lines.append(f"• {topic}")
+        lines.append(f"## 핵심 이슈 {issue_no}) {topic}")
         lines.append(topic_intro(topic, len(rows)))
         for r in rows:
             title = (r.get("title") or "(제목 없음)").strip()
             summary = r.get("summary") or fallback_summary(title)
-            lines.append(f"  - {title}: {summary}")
+            lines.append(f"- {title}: {summary}")
             used_links.add(r["link"])
         lines.append("")
+        issue_no += 1
 
     # 3) 원문 링크: 누락 없이 전량 출력
     lines.append("원문 링크")
