@@ -148,7 +148,7 @@ def fallback_summary(title: str) -> str:
 
 
 def topic_intro(topic: str, count: int) -> str:
-    return f"간밤 이슈 관련 기사 {count}건을 확인했다. 핵심 사실을 기사별로 정리한다."
+    return f"{topic} 관련 기사 {count}건을 바탕으로 간밤 흐름을 정리했다."
 
 
 def build_brief(collected):
@@ -198,7 +198,7 @@ def build_brief(collected):
         lines.append("간밤 글로벌 이슈가 다면적으로 분산됐다.")
     lines.append("")
 
-    # 2) 핵심 이슈 요약: 별도 '쟁점/현안', '다르게 읽기' 섹션 없이 상세 요약
+    # 2) 핵심 이슈 요약: 불릿 대신 서술형 장문 요약
     used_links = set()
     issue_no = 1
 
@@ -207,11 +207,19 @@ def build_brief(collected):
             continue
         lines.append(f"## 핵심 이슈 {issue_no}) {topic}")
         lines.append(topic_intro(topic, len(rows)))
-        for r in rows:
+
+        sent = []
+        for i, r in enumerate(rows, start=1):
             title = (r.get("title") or "(제목 없음)").strip()
             summary = r.get("summary") or fallback_summary(title)
-            lines.append(f"- {title}: {summary}")
+            if i == 1:
+                sent.append(f"먼저 {title} 보도에서는 {summary}")
+            else:
+                sent.append(f"또한 {title} 기사에서는 {summary}")
             used_links.add(r["link"])
+
+        paragraph = " ".join(s.rstrip('.。…') + "." for s in sent)
+        lines.append(paragraph)
         lines.append("")
         issue_no += 1
 
