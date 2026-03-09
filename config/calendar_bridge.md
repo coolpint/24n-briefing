@@ -16,3 +16,4 @@
 - 아침 브리핑: 07:30
 - 저녁 점검: 21:30
 - 수시 알림: 2시간 이내 일정, 당일 마감 할 일
+- 합산 브리핑 소스: Apple Calendar + Google Workspace Calendar + Apple Reminders(할일, 머니앤로)
