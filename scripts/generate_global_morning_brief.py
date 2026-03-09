@@ -152,34 +152,40 @@ def synthesize_topic_paragraph(topic: str, rows: list[dict]) -> str:
     text = " ".join(f"{r.get('title','')} {r.get('summary','')}" for r in rows).lower()
 
     if topic == "미국-이란 충돌":
-        parts = [f"간밤 글로벌 흐름의 중심에는 {topic}이 있었다. 관련 기사 {count}건이 확인됐고, 시장은 군사 충돌 자체보다 확전 가능성과 에너지 공급 불안을 더 민감하게 받아들였다."]
-        if any(k in text for k in ["oil", "energy", "hormuz", "heating", "petrol"]):
-            parts.append("특히 유가와 에너지 비용, 해상 운송 차질 우려가 함께 부각되면서 지정학 이슈가 곧바로 생활물가와 금융시장 변수로 번지는 흐름이 나타났다.")
-        if any(k in text for k in ["leader", "supreme", "putin", "g7", "reserve"]):
-            parts.append("외교 해법과 비상 대응 논의도 함께 거론돼, 시장은 군사 충돌과 정책 대응을 동시에 추적하는 분위기였다.")
+        parts = ["간밤 글로벌 흐름의 중심에는 미국-이란 충돌이 있었다."]
+        if any(k in text for k in ["heating oil", "petrol", "bills", "finances"]):
+            parts.append("영국 등에서는 중동 전쟁 여파가 난방유와 휘발유 가격, 가계 부담으로 번질 수 있다는 점을 짚는 보도가 이어졌다.")
+        if any(k in text for k in ["g7", "reserve", "putin", "macron"]):
+            parts.append("주요국 정상과 G7 차원의 대응 논의도 이어지면서, 사태가 군사 충돌을 넘어 외교·에너지 정책 문제로 확장되는 양상이 나타났다.")
+        if any(k in text for k in ["hormuz", "ship", "turkey", "nato"]):
+            parts.append("호르무즈 해협 항로와 인근 안보 상황을 둘러싼 보도도 잇따르며, 시장은 원유 공급과 해상 운송 차질 가능성을 함께 주시했다.")
         return " ".join(parts)
 
     if topic == "중국 정책·산업":
-        parts = [f"중국 정책·산업도 간밤 주요 축이었다. 관련 기사 {count}건이 확인됐고, 통상, 공급망, 산업정책이 한꺼번에 엮여 움직였다."]
-        if any(k in text for k in ["rare earth", "supply chain", "chip", "ai", "trade", "tariff"]):
-            parts.append("희토류와 반도체, 인공지능, 대미 통상 이슈가 함께 거론되면서 중국발 정책 리스크가 산업별 밸류체인에 직접 연결되는 모습이 다시 확인됐다.")
-        if any(k in text for k in ["court", "corruption law", "top court"]):
-            parts.append("정책 방향뿐 아니라 제도·사법 영역의 메시지도 나오면서 규제와 성장 지원이 병행되는 흐름으로 읽혔다.")
+        parts = ["중국에서는 산업정책과 통상 전략, 사법·제도 정비가 동시에 부각됐다."]
+        if any(k in text for k in ["rare earth", "critical minerals", "supply chain"]):
+            parts.append("희토류와 핵심 광물, 공급망 안보를 둘러싼 보도에서는 중국 당국과 미국 정책 라인이 모두 자원 우위를 전략 자산으로 다루는 흐름이 확인됐다.")
+        if any(k in text for k in ["trade", "tariff", "fentanyl", "truce"]):
+            parts.append("미중 관계에서는 관세와 펜타닐, 정상회담 준비를 둘러싼 신경전 속에서도 전면 충돌보다 전술적 휴전 가능성을 점치는 보도가 나왔다.")
+        if any(k in text for k in ["catl", "chip", "ai", "top court", "corruption law"]):
+            parts.append("기업 측면에서는 CATL 실적과 반도체·인공지능 육성 이슈가, 제도 측면에서는 최고인민법원과 반부패 법제 논의가 맞물리며 성장 지원과 통제 강화가 병행되는 모습이 나타났다.")
         return " ".join(parts)
 
     if topic == "빅테크·AI":
-        parts = [f"빅테크·AI 분야에서는 관련 기사 {count}건이 이어졌다. 간밤 흐름은 신기술 경쟁 자체보다 규제와 활용 범위를 둘러싼 갈등이 더 두드러졌다."]
-        if any(k in text for k in ["anthropic", "military", "risk", "journalism", "security"]):
-            parts.append("특히 생성형 인공지능의 공공 활용과 군사·안보 접점, 그리고 산업 내 책임 범위를 둘러싼 논쟁이 커지면서 기술 경쟁이 곧 제도 논쟁으로 이어지는 양상이 나타났다.")
+        parts = ["빅테크·AI 분야에서는 기술 경쟁보다 규제와 책임 범위를 둘러싼 갈등이 더 선명했다."]
+        if any(k in text for k in ["anthropic", "military", "risk"]):
+            parts.append("앤스로픽 관련 보도에서는 미국 정부의 위험 규정과 군사 활용 문제를 둘러싼 법적 충돌이 본격화됐다는 점이 드러났다.")
+        if any(k in text for k in ["journalism", "security", "firefox"]):
+            parts.append("동시에 인공지능이 언론과 보안 분야의 역할을 어떻게 바꾸는지를 둘러싼 논의도 이어지며, 기술 도입이 산업 구조 재편 문제로 번지는 흐름이 확인됐다.")
         return " ".join(parts)
 
     if topic == "일본·동북아 외교":
-        return f"일본·동북아 외교 이슈도 함께 부상했다. 관련 기사 {count}건이 확인됐고, 동북아 안보 현안과 지역 내 상징적 이벤트가 동시에 맞물리며 긴장과 일상 이슈가 병존하는 흐름이 이어졌다."
+        return "일본·동북아에서는 북한 관련 일정 변화와 역내 안보 이슈가 함께 부각됐다. 북한이 평양 마라톤을 돌연 취소했고, 일본은 장거리 미사일 배치 계획을 재확인하면서 지역 안보 긴장이 다시 환기됐다."
 
     if topic == "리걸테크":
-        return f"리걸테크 분야에서는 관련 기사 {count}건이 이어졌다. 신기능이나 투자 소식 자체보다 법률 서비스의 자금 조달과 업무 자동화가 실무 도구로 자리잡는 흐름이 더 뚜렷하게 드러났다."
+        return "리걸테크 분야에서는 법률 서비스의 자금 조달과 업무 효율화가 주요 화두였다. 일부 기업은 로펌 대상 금융 지원과 사실관리 플랫폼 확장에 나서며, 기술이 실험 단계를 넘어 법률 실무 인프라로 자리잡는 흐름을 보였다."
 
-    return f"기타 글로벌 이슈도 적지 않았다. 관련 기사 {count}건이 확인됐고, 사회·치안·정치 사건이 여러 지역에서 동시에 이어지며 세계 뉴스 흐름이 한쪽으로만 수렴하지 않는 모습이었다."
+    return "기타 글로벌 이슈에서는 미국과 유럽, 남미 등에서 치안·정치·사회 사건이 이어졌다. 각 지역의 사건 성격은 달랐지만, 글로벌 뉴스 흐름이 지정학 하나로만 수렴하지 않고 사회 불안과 국내 정치 변수까지 함께 커지고 있다는 점이 확인됐다."
 
 
 def build_brief(collected):
