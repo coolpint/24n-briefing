@@ -13,8 +13,14 @@
 
 ## Google Workspace Calendar
 
-현재 토큰은 Gmail용 scope만 있어 캘린더 조회에 실패함.
-아래 명령으로 calendar.readonly 권한을 다시 받아야 함.
+현재 상태:
+- OAuth 토큰은 생성 가능
+- 하지만 Google Cloud 프로젝트에서 **Google Calendar API**가 비활성화돼 있으면 조회가 실패함
+
+먼저 아래 페이지에서 API를 켜야 함:
+- https://console.developers.google.com/apis/api/calendar-json.googleapis.com/overview?project=667450462213
+
+그다음 calendar.readonly 권한을 다시 받아야 함.
 
 ```bash
 /Users/sanghoon/.openclaw/workspace/mail_setup/.venv/bin/python /Users/sanghoon/.openclaw/workspace/scripts/bootstrap_google_calendar_oauth.py
