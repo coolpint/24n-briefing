@@ -1,0 +1,12 @@
+{
+  "google_workspace": {
+    "token_file": "mail_setup/tokens/your_google_workspace_token.json",
+    "calendar_ids": ["primary"]
+  },
+  "o365": {
+    "tenant_id": "YOUR_TENANT_ID",
+    "client_id": "YOUR_APP_CLIENT_ID",
+    "account": "name@company.com",
+    "calendar_ids": ["Calendar"]
+  }
+}

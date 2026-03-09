@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-09T16:41:56.188325",
+  "generated_at": "2026-03-09T16:47:03.168183",
   "reminders": [],
-  "error": null
+  "error": "Reminders 접근이 시간 초과됐습니다. macOS 자동화/미리 알림 권한 확인이 필요합니다."
 }

@@ -1,0 +1,12 @@
+{
+  "google_workspace": {
+    "token_file": "mail_setup/tokens/sanghoon_kim_silverlining_mobi.json",
+    "calendar_ids": ["primary"]
+  },
+  "o365": {
+    "tenant_id": "",
+    "client_id": "",
+    "account": "",
+    "calendar_ids": ["Calendar"]
+  }
+}

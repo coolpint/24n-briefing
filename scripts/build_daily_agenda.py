@@ -59,6 +59,8 @@ def main():
 
     lines = ["# 데일리 일정 브리핑", ""]
     lines.append(f"기준 시각: {now.strftime('%Y-%m-%d %H:%M KST')}")
+    if cal_payload.get("error"):
+        lines.append(f"- 참고: 캘린더 읽기 미완료 ({cal_payload.get('error')})")
     if rem_payload.get("error"):
         lines.append(f"- 참고: 미리 알림 읽기 미완료 ({rem_payload.get('error')})")
     lines.append("")
