@@ -24,18 +24,21 @@ set oldTID to AppleScript's text item delimiters
 set AppleScript's text item delimiters to "\n"
 set outLines to {}
 tell application "Reminders"
-    repeat with rl in lists
-        repeat with r in (every reminder of rl whose completed is false)
-            set listName to name of rl as text
-            set rTitle to name of r as text
-            set dueText to ""
-            try
-                if due date of r is not missing value then
-                    set dueText to ((due date of r) as «class isot» as text)
-                end if
-            end try
-            set end of outLines to (listName & "\t" & rTitle & "\t" & dueText)
-        end repeat
+    repeat with listNameWanted in {"할일", "머니앤로"}
+        if (exists list listNameWanted) then
+            set rl to list listNameWanted
+            repeat with r in (every reminder of rl whose completed is false)
+                set listName to name of rl as text
+                set rTitle to name of r as text
+                set dueText to ""
+                try
+                    if due date of r is not missing value then
+                        set dueText to ((due date of r) as «class isot» as text)
+                    end if
+                end try
+                set end of outLines to (listName & "\t" & rTitle & "\t" & dueText)
+            end repeat
+        end if
     end repeat
 end tell
 set AppleScript's text item delimiters to oldTID
