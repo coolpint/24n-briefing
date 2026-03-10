@@ -30,28 +30,7 @@ def send(token, chat_id, text):
 
 
 def main():
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print("Skip: missing telegram secrets")
-        return
-
-    f = latest_file()
-    if not f:
-        print("Skip: no close brief")
-        return
-
-    text = Path(f).read_text(encoding="utf-8")
-    # 상태/오류 공지는 텔레그램 발송에서 제외
-    if ("휴장일" in text) or ("브리핑 생성을 보류" in text) or ("오류:" in text):
-        print("Skip: holiday/error notice suppressed")
-        return
-    chunks = [text[i:i + 3900] for i in range(0, len(text), 3900)]
-    for i, c in enumerate(chunks, 1):
-        if len(chunks) > 1:
-            c = f"[한국시황 {i}/{len(chunks)}]\n\n" + c
-        send(token, chat_id, c)
-    print(f"Sent: {Path(f).name}")
+    print("Skip: korea close telegram delivery disabled")
 
 
 if __name__ == "__main__":
