@@ -1,0 +1,83 @@
+{
+  "date": "2026-03-11",
+  "selected": [
+    {
+      "topic": "미국-이란 충돌",
+      "source": "SCMP China",
+      "title": "Analysts say Trump is looking for a way out of Iran. Is it ‘Taco’ time?",
+      "summary": "US President Donald Trump has built a potential off-ramp by suggesting the Iran war could end soon, but the world is still guessing about whether he will take it – and whether Tehran will let him. With surging oil prices threatening the glo…",
+      "link": "https://www.scmp.com/news/world/middle-east/article/3346150/will-trump-taco-iran-analysts-say-hes-looking-way-out?utm_source=rss_feed",
+      "published_at": "2026-03-10T20:23:36+00:00",
+      "score": 6
+    },
+    {
+      "topic": "중국 정책·산업",
+      "source": "SCMP China",
+      "title": "Why China’s red-hot tech push is leaving some traditional sectors out in the cold",
+      "summary": "With its cutting-edge humanoid robots busting moves on the world’s most-watched television programme and German Chancellor Friedrich Merz touring a company factory during a state visit, both within the last month, Unitree Robotics – already…",
+      "link": "https://www.scmp.com/economy/china-economy/article/3346115/why-chinas-red-hot-tech-push-leaving-some-traditional-sectors-out-cold?utm_source=rss_feed",
+      "published_at": "2026-03-10T22:00:13+00:00",
+      "score": 6
+    },
+    {
+      "topic": "빅테크·AI",
+      "source": "SCMP China",
+      "title": "Memory price hikes ‘the new normal’ as AI boom fuels storage demand, Seagate says",
+      "summary": "Memory price hikes are likely to become “the new normal” for the next few years, according to an executive at storage giant Seagate Technology, as the artificial intelligence boom of the past two to three years pushes the industry into what…",
+      "link": "https://www.scmp.com/tech/article/3346104/memory-price-hikes-new-normal-ai-boom-fuels-storage-demand-seagate-says?utm_source=rss_feed",
+      "published_at": "2026-03-10T14:30:07+00:00",
+      "score": 6
+    },
+    {
+      "topic": "기타 글로벌 이슈",
+      "source": "BBC Business",
+      "title": "Oil and gas prices fall after Trump says war is 'very complete'",
+      "summary": "The US president's comments lead to a drop in crude costs and a rebound in shares",
+      "link": "https://www.bbc.com/news/articles/cx2jxe382pwo?at_medium=RSS&at_campaign=rss",
+      "published_at": "2026-03-10T18:06:58+00:00",
+      "score": 6
+    },
+    {
+      "topic": "일본·동북아",
+      "source": "SCMP China",
+      "title": "Mainland Chinese see Taiwan positively, won’t retreat from US trade war: survey",
+      "summary": "Mainland Chinese citizens feel more favourable towards Taiwan than they did six months ago, support a hardline stance towards the US if another trade war erupts and view Russia and North Korea most positively and Japan least positively amon…",
+      "link": "https://www.scmp.com/news/china/diplomacy/article/3346151/mainland-chinese-see-taiwan-positively-wont-retreat-us-trade-war-survey?utm_source=rss_feed",
+      "published_at": "2026-03-10T20:50:18+00:00",
+      "score": 6
+    },
+    {
+      "topic": "미국-이란 충돌",
+      "source": "BBC World",
+      "title": "Air strikes cause black rain and 'unprecedented' pollution in Tehran, scientists say",
+      "summary": "Air strikes have damaged at least four oil facilities since US-Israeli attacks on Iran began last month",
+      "link": "https://www.bbc.com/news/articles/cqxd1nv3re2o?at_medium=RSS&at_campaign=rss",
+      "published_at": "2026-03-10T19:39:58+00:00",
+      "score": 6
+    },
+    {
+      "topic": "미국-이란 충돌",
+      "source": "BBC World",
+      "title": "War expands to central Beirut as Israeli strike kills Iranians in luxury hotel",
+      "summary": "Israel's military says it targeted Quds Force operatives after a return to war with Lebanon's Hezbollah movement, but Iran says they were diplomats",
+      "link": "https://www.bbc.com/news/articles/c2k8y7vy78no?at_medium=RSS&at_campaign=rss",
+      "published_at": "2026-03-10T18:33:03+00:00",
+      "score": 6
+    },
+    {
+      "topic": "기타 글로벌 이슈",
+      "source": "BBC Business",
+      "title": "British Airways to suspend UK repatriation flights - latest on travel from Middle East",
+      "summary": "BA cancels more Middle East flights until 28 March, following Iranian strikes across the region in retaliation to US and Israeli bombardment",
+      "link": "https://www.bbc.com/news/articles/c4ge52x4w37o?at_medium=RSS&at_campaign=rss",
+      "published_at": "2026-03-10T18:01:39+00:00",
+      "score": 6
+    }
+  ],
+  "total_links": 55,
+  "errors": [
+    "Reuters World: <urlopen error [Errno 8] nodename nor servname provided, or not known>",
+    "Reuters Business: <urlopen error [Errno 8] nodename nor servname provided, or not known>",
+    "Reuters Technology: <urlopen error [Errno 8] nodename nor servname provided, or not known>"
+  ]
+}
