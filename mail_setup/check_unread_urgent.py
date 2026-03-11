@@ -16,7 +16,7 @@ CFG = ROOT / "mail_setup" / "accounts.json"
 SECRETS = ROOT / "mail_setup" / "secrets.json"
 
 URGENT_RE = re.compile(r"긴급|urgent|asap|결제|미납|계약|소송|마감|당일|즉시|payment|invoice", re.I)
-EXCLUDE_RE = re.compile(r"자산운용보고서|운용보고서", re.I)
+EXCLUDE_RE = re.compile(r"자산운용보고서|운용보고서|박사과정|박사 과정|대학원|모집요강|원서접수|입학설명회|ASSIST", re.I)
 EXCLUDE_SENDER_RE = re.compile(r"@ksdreport\.or\.kr", re.I)
 AD_PREFIX_RE = re.compile(r"^\s*(\(\s*광고\s*\)|\[\s*광고\s*\]|광고)\b", re.I)
 
