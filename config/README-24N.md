@@ -1,4 +1,4 @@
-# 24N 운영 메모 (X 비의존 버전)
+# 24N 운영 메모 (뉴스 요약 우선 버전)
 
 ## 소스 목록 관리
 - 파일: `config/sources.json`
@@ -8,7 +8,7 @@
 - `sources[].rank_by`로 정렬 기준 지정 (`recent`, `hada_points`)
 - `sources[].author_contains`를 쓰면 통합 RSS에서 특정 필자만 필터링 가능
 - 계정 추가/삭제는 JSON에서 즉시 반영
-- `x_web_watchlist`는 웹 크롤링 보강용 예약 영역(기본 비활성)
+- 소셜 반응은 보조 참고에 그치며, 본문 브리핑은 실제 기사/뉴스레터 요약을 우선한다
 
 ## 실행 방식
 - 자동: 매일 06:00 KST (`.github/workflows/daily-24n.yml`)

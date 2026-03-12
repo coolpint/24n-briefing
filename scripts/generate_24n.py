@@ -255,68 +255,56 @@ def fetch_link_context(url: str) -> dict:
 
 
 def build_article_brief(ok_items, x_items=None):
-    if not ok_items and not x_items:
-        return ["간밤에 반응이 크게 붙은 이슈가 확인되지 않아 브리핑을 생략했다."]
+    if not ok_items:
+        return ["간밤에는 핵심 뉴스 흐름이 두드러지지 않아 브리핑을 생략했다."]
 
-    # RSS/뉴스레터는 '여러 소스가 같은 주제를 다룬 경우'만 핵심으로 간주
     buckets = {
-        "AI·빅테크": ["ai", "openai", "anthropic", "model", "chip", "agent", "code"],
-        "중국·지정학": ["china", "중국", "iran", "war", "sanction", "외교", "안보"],
-        "시장·거시": ["market", "stock", "inflation", "rate", "economy", "증시", "금리"],
+        "AI·빅테크": ["ai", "openai", "anthropic", "model", "chip", "agent", "code", "claude", "gemini"],
+        "중국·정책": ["china", "중국", "beijing", "policy", "regulation", "compliance", "export", "tariff"],
+        "시장·거시": ["market", "stock", "inflation", "rate", "economy", "증시", "금리", "jobs", "growth"],
+        "국제정세": ["iran", "war", "sanction", "외교", "안보", "conflict", "israel", "ukraine"],
         "리걸테크": ["legal", "law", "contract", "court", "리걸", "법률"],
     }
 
-    def label_of(title: str):
-        t = (title or "").lower()
+    def label_of(title: str, summary: str = ""):
+        t = f"{title} {summary}".lower()
         for label, kws in buckets.items():
             if any(k in t for k in kws):
                 return label
         return "기타"
 
-    labeled = []
-    for it in ok_items[:40]:
-        labeled.append({**it, "topic": label_of(it.get("title", ""))})
+    labeled = [{**it, "topic": label_of(it.get("title", ""), it.get("summary", ""))} for it in ok_items[:40]]
 
-    # 소스 중복이 있는 주제만 채택
     topic_sources = {}
     for it in labeled:
         topic_sources.setdefault(it["topic"], set()).add(it["source"])
 
-    picked_topics = [t for t, srcs in topic_sources.items() if t != "기타" and len(srcs) >= 2]
-
-    # 중복 주제가 없으면 상위 1개만 최소 채택
+    picked_topics = [t for t, srcs in topic_sources.items() if t != "기타" and len(srcs) >= 1]
     if not picked_topics:
         freq = Counter([it["topic"] for it in labeled if it["topic"] != "기타"])
         if freq:
             picked_topics = [freq.most_common(1)[0][0]]
 
-    lines = []
+    lines = ["간밤 브리핑은 실제 기사와 뉴스레터에서 확인되는 사실 관계를 중심으로 핵심 이슈만 추려 정리했다."]
 
-    if x_items:
-        lines.append("간밤에는 X에서 반응이 붙은 코멘트가 먼저 방향을 만들고, 뉴스·뉴스레터가 뒤따라 맥락을 보강하는 흐름이 나타났다.")
-    else:
-        lines.append("간밤 브리핑은 다수 소스가 동시에 다룬 주제만 추려 핵심 내용 위주로 정리했다.")
-
-    # 주제별 핵심 1~2개를 실제 내용 중심으로 요약
     for topic in picked_topics[:3]:
         rows = [it for it in labeled if it["topic"] == topic][:2]
         if not rows:
             continue
-        contexts = []
+        facts = []
         for r in rows:
             ctx = fetch_link_context(r.get("link", ""))
-            desc = ctx.get("desc") or ctx.get("title_hint") or r.get("title", "")
-            desc = re.sub(r"\s+", " ", desc).strip()
-            if len(desc) > 110:
-                desc = desc[:110] + "..."
-            contexts.append(desc)
-        if len(contexts) >= 2:
-            lines.append(f"{topic}에서는 {contexts[0]}와 {contexts[1]}가 핵심으로 확인됐다.")
+            desc = ctx.get("desc") or r.get("summary") or ctx.get("title_hint") or r.get("title", "")
+            desc = re.sub(r"\s+", " ", desc).strip(" .")
+            if not desc:
+                desc = r.get("title", "").strip()
+            if len(desc) > 140:
+                desc = desc[:140].rstrip() + "..."
+            facts.append(desc)
+        if len(facts) >= 2:
+            lines.append(f"{topic}에서는 {facts[0]}라는 내용과 {facts[1]}라는 내용이 핵심으로 확인됐다.")
         else:
-            lines.append(f"{topic}에서는 {contexts[0]}가 핵심 쟁점으로 부각됐다.")
-
-    if x_items:
-        lines.append("X 반응이 높은 발언은 단순 소식 전달보다 해석 경쟁 성격이 강해, 투자·정책 판단에는 원문 발언 맥락 확인이 필요하다.")
+            lines.append(f"{topic}에서는 {facts[0]}라는 내용이 핵심으로 확인됐다.")
 
     return lines
 
@@ -386,20 +374,11 @@ def build_md(title, items, inactive, now_kst, x_web=None):
 
     lines.append("## 참고 링크")
     if ok_items:
-        for it in ok_items[:10]:
+        for it in ok_items[:8]:
             lines.append(f"- {it['title']} | {it['link']}")
     else:
         lines.append("- 없음")
     lines.append("")
-
-    if x_web and x_web.get("items"):
-        lines.append("## X 웹 보강(실험)")
-        for line in summarize_x_web(x_web.get("items", [])):
-            lines.append(line)
-        lines.append("- 원문 링크")
-        for it in x_web.get("items", [])[:5]:
-            lines.append(f"  - @{it['account']} | {it['link']}")
-        lines.append("")
 
     return "\n".join(lines)
 
