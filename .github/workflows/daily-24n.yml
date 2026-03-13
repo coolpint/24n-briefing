@@ -1,45 +1,11 @@
-name: daily-24n
+name: daily-24n-disabled
 
 on:
-  schedule:
-    # 06:00 KST = 21:00 UTC (previous day)
-    - cron: '0 21 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  build-24n:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Generate 24N brief
-        run: |
-          python scripts/generate_24n.py
-
-      - name: Send Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python scripts/send_telegram.py
-
-      - name: Commit output
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add output/*.md || true
-          if git diff --cached --quiet; then
-            echo "No changes"
-            exit 0
-          fi
-          git commit -m "chore: generate daily 24N brief"
-          git push
+      - name: Disabled
+        run: echo "24N 일반 동향점검 자동 생성·전송은 일시 중지됨"
